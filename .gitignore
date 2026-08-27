@@ -1,0 +1,21 @@
+# Datos de las bases de datos
+data/
+
+# Variables de entorno
+.env
+.env.*
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
