@@ -1,3 +1,5 @@
+# Bitacora de creación del backend manual
+
 # Bitácora de Creación y Acoplamiento del Backend — Arrenda360
 
 ### Plataforma de Administración Inmobiliaria Integral (Inmuebles, Contratos, Cobros, Mantenimiento y Distribución)
@@ -174,9 +176,11 @@ curl -s http://localhost:3002 || true
 
 ## FASE 3 — `02_BASE_ESTRUCTURA_CA`
 
+### 3.1 — Crear árbol base de carpetas
+
 ### 3.1 — Crear árbol base de carpetas y andamiaje arquitectónico
 
-En esta fase se estructura la solución siguiendo **Clean Architecture (CA)** y **Domain-Driven Design (DDD)**.
+Aún no hay código de dominio. Solo directorios y módulos vacíos de features para anclar imports futuros. En esta fase se estructura la solución siguiendo **Clean Architecture (CA)** y **Domain-Driven Design (DDD)**.
 
 Se definen tres niveles de carpetas: 1. **Transversal del Sistema (`config/`, `common/`, `infrastructure/`):** Piezas de configuración, seguridad, logging, manejo global de errores y fábrica de base de datos. 2. **Andamiaje Inicial de Features:** Estructuración de las cuatro capas de CA para cada contexto delimitado: - `domain/`: Entidades puras, interfaces de repositorio, excepciones y reglas de negocio. - `application/`: Casos de uso (Use Cases), DTOs de entrada/salida y mappers. - `infrastructure/`: Modelos de persistencia Sequelize (`@Table`, `@Column`), repositorios concretos y migraciones. - `presentation/`: Controladores REST HTTP (`@Controller`), decoradores y documentación Swagger. 3. **Módulos de Negocio del Dominio Arrenda360:** - `src/features/business/properties` (Inmuebles y Propietarios) - `src/features/business/leases` (Arrendatarios y Contratos de Arrendamiento) - `src/features/business/receivables` (Cobros Mensuales y Pagos) - `src/features/business/owner-settlements` (Distribución de Recaudos a Propietarios) - `src/features/business/maintenance` (Tickets de Incidencias, Proveedores y Órdenes de Mantenimiento)
 
@@ -206,19 +210,27 @@ mkdir -p src/features/business/{properties,leases,receivables,owner-settlements,
 
 ![](images/clipboard-2017035320.png)
 
+### 3.2 — Recordatorio de responsabilidades
+
 ### 3.2 — Matriz de responsabilidades y capas arquitectónicas
 
-| Carpeta / Capa | Responsabilidad Técnica y Conceptual | Regla de Dependencia |
-|----|----|----|
-| `config/` | Configuración agnóstica de variables de entorno, puertos, logs y OpenAPI Swagger. | Transversal a la aplicación. |
-| `common/` | Decoradores personalizados, filtros de excepción (`GlobalExceptionFilter`), interceptores, pipes de validación y guards de seguridad (**RBAC**). | Reutilizable sin acoplar a un dominio particular. |
-| `infrastructure/` | Adaptadores técnicos hacia tecnologías externas: Sequelize ORM, drivers de bases de datos (`mysql2`, `pg`, `tedious`, `oracledb`). | Conoce los detalles de framework y persistencia. |
-| `domain/` | Lógica pura del negocio: entidades de dominio, contratos de repositorio (interfaces), invariantes de negocio. | **Independiente:** NUNCA debe importar Sequelize, Express o NestJS. |
-| `application/` | Orquestación de casos de uso, DTOs de validación con `class-validator`, transformadores/mappers. | Depende únicamente del Dominio. |
-| `presentation/` | Controladores HTTP, validación de payloads, serialización de respuestas y decoradores Swagger. | Recibe peticiones HTTP y delega la ejecución al caso de uso. |
-| `features/business/*` | Bounded Contexts de **Arrenda360** organizados modularmente. | Cada módulo expone su API pública e interactúa mediante contratos limpios. |
+| Carpeta | Responsabilidad |
+|----------------------|--------------------------------------------------|
+| `config/` | Cómo se configura la app (env, jwt, swagger) |
+| `common/` | Piezas transversales reutilizables |
+| `infrastructure/` | Detalles técnicos (Sequelize, bcrypt, JWT) |
+| `features/*` | Dominios (business/auth) con CA interna |
+| Carpeta / Capa | Responsabilidad Técnica y Conceptual |
+| ---- | ---- |
+| `config/` | Configuración agnóstica de variables de entorno, puertos, logs y OpenAPI Swagger. |
+| `common/` | Decoradores personalizados, filtros de excepción (`GlobalExceptionFilter`), interceptores, pipes de validación y guards de seguridad (**RBAC**). |
+| `infrastructure/` | Adaptadores técnicos hacia tecnologías externas: Sequelize ORM, drivers de bases de datos (`mysql2`, `pg`, `tedious`, `oracledb`). |
+| `domain/` | Lógica pura del negocio: entidades de dominio, contratos de repositorio (interfaces), invariantes de negocio. |
+| `application/` | Orquestación de casos de uso, DTOs de validación con `class-validator`, transformadores/mappers. |
+| `presentation/` | Controladores HTTP, validación de payloads, serialización de respuestas y decoradores Swagger. |
+| `features/business/*` | Bounded Contexts de **Arrenda360** organizados modularmente. |
 
-> [!IMPORTANT] **Principio de Inversión de Dependencias (DIP):** Las reglas de negocio (Dominio) no deben depender de la base de datos ni del framework. Por tanto, los modelos `@Table` de Sequelize residen en `infrastructure/persistence/models` y nunca dentro de `domain/entities`.
+**Error típico:** poner `@Table` de Sequelize dentro de `domain/entities`. \> [!IMPORTANT] **Principio de Inversión de Dependencias (DIP):** Las reglas de negocio (Dominio) no deben depender de la base de datos ni del framework. Por tanto, los modelos `@Table` de Sequelize residen en `infrastructure/persistence/models` y nunca dentro de `domain/entities`.
 
 ------------------------------------------------------------------------
 
@@ -1029,7 +1041,7 @@ npm run start:dev
 
 ### 6.1 — config/app/app.constants.ts
 
-Archivo del feature en Clean Architecture.
+Constantes globales de la aplicación: define el nombre del namespace de configuración (`app`) y los valores predeterminados de puerto y entorno de ejecución.
 
 **Archivo:** `src/config/app/app.constants.ts`
 
@@ -1049,7 +1061,7 @@ EOF_BACKEND_IA
 
 ### 6.2 — config/app/app.config.ts
 
-Archivo del feature en Clean Architecture.
+Factory de configuración con `registerAs` de NestJS. Carga las variables de entorno del sistema (`PORT`, `NODE_ENV`) aplicándoles conversión numérica y asignación de valores de respaldo por defecto.
 
 **Archivo:** `src/config/app/app.config.ts`
 
@@ -1071,7 +1083,7 @@ EOF_BACKEND_IA
 
 ### 6.3 — config/logger/logger.config.ts
 
-Archivo del feature en Clean Architecture.
+Configuración dinámica de los niveles de logging del framework. En modo desarrollo habilita trazas detalladas (`debug`, `verbose`, `fatal`), mientras que en producción se restringe a eventos clave (`log`, `error`, `warn`).
 
 **Archivo:** `src/config/logger/logger.config.ts`
 
@@ -1118,7 +1130,7 @@ EOF_BACKEND_IA
 
 ### 6.5 — config/swagger/swagger.constants.ts
 
-Archivo del feature en Clean Architecture.
+Metadatos de especificación OpenAPI para **Arrenda360 API**: define el título del sistema, la descripción de los bounded contexts cubiertos (inmuebles, contratos, cartera, recaudo, mantenimiento y RBAC), la versión semántica y la ruta de acceso al portal interactivo (`api/docs`).
 
 **Archivo:** `src/config/swagger/swagger.constants.ts`
 
@@ -1137,7 +1149,7 @@ EOF_BACKEND_IA
 
 ### 6.6 — config/swagger/swagger.config.ts
 
-Archivo del feature en Clean Architecture. *(adaptado: se quitó `.addBearerAuth(...)`, ya que el proyecto no maneja autenticación)*
+Configuración e inicialización del módulo Swagger en NestJS mediante `DocumentBuilder`. Habilita el explorador de endpoints interactivos y permite adjuntar encabezados de seguridad para la validación de roles en tiempo real.
 
 **Archivo:** `src/config/swagger/swagger.config.ts`
 
@@ -1170,7 +1182,7 @@ EOF_BACKEND_IA
 
 ### 6.7 — common/enums/status.enum.ts
 
-Archivo del feature en Clean Architecture.
+Enumeración de estado genérico para entidades maestras del dominio (`ACTIVE`, `INACTIVE`), utilizada para soportar borrado lógico o inhabilitación temporal de registros.
 
 **Archivo:** `src/common/enums/status.enum.ts`
 
@@ -1188,7 +1200,7 @@ EOF_BACKEND_IA
 
 ### 6.8 — common/enums/http-method.enum.ts
 
-Archivo del feature en Clean Architecture.
+Enumeración estándar de métodos HTTP para su reutilización en middlewares, filtros de logging e interceptores de auditoría.
 
 **Archivo:** `src/common/enums/http-method.enum.ts`
 
@@ -1209,7 +1221,7 @@ EOF_BACKEND_IA
 
 ### 6.9 — common/enums/sort-order.enum.ts
 
-Archivo del feature en Clean Architecture.
+Enumeración para el control de dirección de ordenamiento en consultas paginadas (`ASC`, `DESC`).
 
 **Archivo:** `src/common/enums/sort-order.enum.ts`
 
@@ -1227,7 +1239,7 @@ EOF_BACKEND_IA
 
 ### 6.10 — common/constants/app.constants.ts
 
-Archivo del feature en Clean Architecture. *(adaptado: `APP_NAME` al nombre del proyecto)*
+Constantes transversales del núcleo HTTP: identificador del microservicio (`arrenda360_api`) y el prefijo global obligatorio de enrutamiento (`api`).
 
 **Archivo:** `src/common/constants/app.constants.ts`
 
@@ -1243,7 +1255,7 @@ EOF_BACKEND_IA
 
 ### 6.11 — common/constants/pagination.constants.ts
 
-Archivo del feature en Clean Architecture.
+Constantes maestras para la limitación y normalización de paginación en consultas masivas: página inicial (1), tamaño de página por defecto (10) y techo máximo de seguridad (100) para evitar desbordamientos de memoria.
 
 **Archivo:** `src/common/constants/pagination.constants.ts`
 
@@ -1260,7 +1272,7 @@ EOF_BACKEND_IA
 
 ### 6.12 — common/exceptions/application.exception.ts
 
-Archivo del feature en Clean Architecture.
+Clase base para todas las excepciones del sistema: extiende la clase `Error` nativa de JavaScript, capturando de manera automática el stack trace y adjuntando una marca temporal ISO (`timestamp`) y el código de estado HTTP correspondiente.
 
 **Archivo:** `src/common/exceptions/application.exception.ts`
 
@@ -1286,7 +1298,7 @@ EOF_BACKEND_IA
 
 ### 6.13 — common/exceptions/domain.exception.ts
 
-Archivo del feature en Clean Architecture.
+Excepción para violaciones de reglas e invariantes del dominio puro (validaciones de negocio, estados inconsistentes). Mapea por defecto a código HTTP `400 Bad Request`.
 
 **Archivo:** `src/common/exceptions/domain.exception.ts`
 
@@ -1307,7 +1319,7 @@ EOF_BACKEND_IA
 
 ### 6.14 — common/exceptions/entity-not-found.exception.ts
 
-Archivo del feature en Clean Architecture.
+Excepción tipada para recursos no localizados en los repositorios de persistencia. Mapea directamente a código HTTP `404 Not Found` especificando el nombre de la entidad y el identificador buscado.
 
 **Archivo:** `src/common/exceptions/entity-not-found.exception.ts`
 
@@ -1328,7 +1340,7 @@ EOF_BACKEND_IA
 
 ### 6.15 — common/exceptions/validation.exception.ts
 
-Archivo del feature en Clean Architecture.
+Excepción para errores de validación semántica o estructural de datos recibidos. Mapea al código HTTP `422 Unprocessable Entity`.
 
 **Archivo:** `src/common/exceptions/validation.exception.ts`
 
@@ -1349,7 +1361,7 @@ EOF_BACKEND_IA
 
 ### 6.16 — common/filters/global-exception.filter.ts
 
-Archivo del feature en Clean Architecture.
+Filtro global de excepciones de NestJS (`@Catch()`): intercepta cualquier error no manejado, normaliza la estructura del payload JSON de salida (`statusCode`, `message`, `timestamp`, `path`) y protege el servidor de fugas de información interna en producción.
 
 **Archivo:** `src/common/filters/global-exception.filter.ts`
 
@@ -1400,7 +1412,7 @@ EOF_BACKEND_IA
 
 ### 6.17 — common/filters/sequelize-exception.filter.ts
 
-Archivo del feature en Clean Architecture.
+Filtro especializado para la capa de persistencia: traduce errores nativos de Sequelize (violaciones de unicidad, restricciones de clave foránea, caídas de conexión y errores de validación de modelos) a respuestas HTTP limpias con códigos precisos (409 Conflict, 400 Bad Request, 503 Service Unavailable, 422 Unprocessable).
 
 **Archivo:** `src/common/filters/sequelize-exception.filter.ts`
 
@@ -1459,7 +1471,7 @@ EOF_BACKEND_IA
 
 ### 6.18 — common/interceptors/response.interceptor.ts
 
-Archivo del feature en Clean Architecture.
+Interceptor de salida unificada: captura el resultado exitoso retornado por los controladores y lo encapsula en un sobre JSON estándar con `statusCode`, `message: 'Operación exitosa'`, `data` y `timestamp` ISO.
 
 **Archivo:** `src/common/interceptors/response.interceptor.ts`
 
@@ -1510,7 +1522,7 @@ EOF_BACKEND_IA
 
 ### 6.19 — common/interceptors/logging.interceptor.ts
 
-Archivo del feature en Clean Architecture.
+Interceptor de telemetría y observabilidad HTTP: calcula el tiempo de ejecución exacto de cada petición entrante y registra en consola el verbo HTTP, la ruta invocada, el código de respuesta y la latencia en milisegundos.
 
 **Archivo:** `src/common/interceptors/logging.interceptor.ts`
 
@@ -1552,7 +1564,7 @@ EOF_BACKEND_IA
 
 ### 6.20 — common/interceptors/timeout.interceptor.ts
 
-Archivo del feature en Clean Architecture.
+Interceptor de resiliencia ante bloqueos: cancela automáticamente cualquier petición que tarde más de 30 segundos (30,000 ms) lanzando un `RequestTimeoutException` (HTTP 408), protegiendo hilos de ejecución en el event loop.
 
 **Archivo:** `src/common/interceptors/timeout.interceptor.ts`
 
@@ -1590,7 +1602,7 @@ EOF_BACKEND_IA
 
 ### 6.21 — common/pipes/validation.pipe.ts
 
-Archivo del feature en Clean Architecture.
+Pipe global de validación de payloads: convierte el cuerpo JSON entrante a la instancia de la clase DTO respectiva vía `plainToInstance` y ejecuta validaciones de esquemas declarativos (`class-validator`), lanzando `BadRequestException` con la lista de violaciones detectadas.
 
 **Archivo:** `src/common/pipes/validation.pipe.ts`
 
@@ -1639,7 +1651,7 @@ EOF_BACKEND_IA
 
 ### 6.22 — common/pipes/parse-positive-int.pipe.ts
 
-Archivo del feature en Clean Architecture.
+Pipe de transformación y sanitización de parámetros de ruta (`@Param('id')`): valida que el identificador numérico sea un entero estrictamente positivo (\> 0).
 
 **Archivo:** `src/common/pipes/parse-positive-int.pipe.ts`
 
@@ -1673,7 +1685,7 @@ EOF_BACKEND_IA
 
 ### 6.23 — common/interfaces/pagination.interface.ts
 
-Archivo del feature en Clean Architecture.
+Contratos TypeScript para respuestas paginadas: define la estructura de metadatos (`PaginationMeta` con `page`, `limit`, `total`, `totalPages`) y el envoltorio genérico `PaginatedResult<T>` para tipar colecciones de entidades.
 
 **Archivo:** `src/common/interfaces/pagination.interface.ts`
 
@@ -1698,7 +1710,7 @@ EOF_BACKEND_IA
 
 ### 6.24 — common/interfaces/api-response.interface.ts
 
-Archivo del feature en Clean Architecture.
+Contrato formal del cuerpo de respuesta estándar de la API (`ApiResponseBody<T>`): garantiza uniformidad en todas las respuestas JSON emitidas por los microservicios y controladores.
 
 **Archivo:** `src/common/interfaces/api-response.interface.ts`
 
@@ -1718,7 +1730,7 @@ EOF_BACKEND_IA
 
 ### 6.25 — common/types/nullable.type.ts
 
-Archivo del feature en Clean Architecture.
+Tipo de utilidad genérico (`Nullable<T> = T | null`) para representar atributos de base de datos o de dominio que admiten valores nulos de forma explícita.
 
 **Archivo:** `src/common/types/nullable.type.ts`
 
@@ -1733,7 +1745,7 @@ EOF_BACKEND_IA
 
 ### 6.26 — common/types/optional.type.ts
 
-Archivo del feature en Clean Architecture.
+Tipo de utilidad genérico (`Optional<T> = T | undefined`) para campos optativos en DTOs de actualización parcial o filtros de búsqueda.
 
 **Archivo:** `src/common/types/optional.type.ts`
 
@@ -1748,7 +1760,7 @@ EOF_BACKEND_IA
 
 ### 6.27 — common/utils/pagination.util.ts
 
-Archivo del feature en Clean Architecture.
+Funciones de utilidad matemática para paginación: `normalizePagination` calcula límites seguros y desplazamiento (`offset`), mientras `buildPaginatedResult` ensambla el sobre de respuesta con el total de páginas calculado.
 
 **Archivo:** `src/common/utils/pagination.util.ts`
 
@@ -1792,7 +1804,7 @@ EOF_BACKEND_IA
 
 ### 6.28 — common/utils/date.util.ts
 
-Archivo del feature en Clean Architecture.
+Utilidades puras de manipulación de fechas y tiempos: adición de días para cálculo de vigencia de contratos de arrendamiento y conversión de cadenas de duración (`1d`, `2h`, `30m`, `60s`) a milisegundos numéricos.
 
 **Archivo:** `src/common/utils/date.util.ts`
 
@@ -1834,7 +1846,7 @@ EOF_BACKEND_IA
 
 ### 6.29 — common/utils/string.util.ts
 
-Archivo del feature en Clean Architecture.
+Funciones auxiliares para sanitización de cadenas de texto: normalización y limpieza de correos electrónicos a minúsculas y verificación de cadenas en blanco o vacías.
 
 **Archivo:** `src/common/utils/string.util.ts`
 
@@ -1984,7 +1996,9 @@ npm run start:dev
 
 > **Objetivo didáctico de la fase:** Establecer y evidenciar el patrón canónico de Arquitectura Limpia (Clean Architecture) y principios de Domain-Driven Design (DDD) implementando el flujo integral de una entidad de negocio: Dominio Puro → Infraestructura Sequelize → Capa de Aplicación (DTOs, Mappers y Casos de Uso) → Presentación HTTP (Controlador REST y Swagger) → Módulo NestJS → Cableado de Inyección de Dependencias y Validación de Base de Datos.
 >
-> **Transición y Acoplamiento hacia Arrenda360:** Esta fase sirvió como el laboratorio de validación metodológica sobre el cual se fundamentó la arquitectura final de **Arrenda360**. Las capturas y evidencias de sincronización física de tablas y endpoints Swagger generadas en esta etapa quedan documentadas para demostrar la correcta asimilación técnica del patrón antes de desplegar los 5 módulos de negocio especializados de Arrenda360 (desarrollados en la **Fase 8**).
+> **Nota sobre asociaciones:** `Empresa` se relaciona `1:N` con `Contacto`, `Direccion`, `Envio` y `Factura`, pero esas entidades aún no existen. A diferencia de la plantilla original (que usaba `require()` diferido dentro de `@HasMany`, algo que no funciona en este proyecto ESM), aquí `CompanyModel` se crea **sin asociaciones**. Se agregarán con imports estáticos normales cuando se construyan esas entidades en fases posteriores.
+>
+> **Transición y Acoplamiento hacia Arrenda360:** Esta fase sirvió como el laboratorio de validación metodológica sobre el cual se fundamentó la arquitectura final de **Arrenda360**. Las capturas y evidencias de sincronización física de tablas y endpoints Swagger generadas en esta etapa quedan documentadas para demostrar la correcta asimilación técnica del patrón antes de desplegar los 5 módulos de negocio especializados de Arrenda360 (desarrollados a partir de la **Fase 8**).
 
 ### 7.1 — features/shipping/companies/domain/entities/company.entity.ts
 
@@ -3155,290 +3169,1958 @@ npm run start:dev
 
 ------------------------------------------------------------------------
 
-## FASE 8 — ACOPLAMIENTO DEFINITIVO DEL DOMINIO DE NEGOCIO: ARRENDA360
+## FASE 8 — `07_BUSINESS_PROPERTIES` (Inmuebles y Propietarios)
 
-### 8.1 — Narrativa del Proyecto y Alcance Operativo
+### Business — Properties / Gestión de Inmuebles y Propietarios (CA & DDD)
 
-> **Problema y Alcance:** **Arrenda360** es una solución corporativa de administración inmobiliaria diseñada para gestionar de forma centralizada y escalable el ciclo de vida completo de arrendamientos urbanos y comerciales.
+> **Objetivo de la fase:** Primer contexto delimitado de **Arrenda360**. Administra la cartera de propietarios del negocio inmobiliario y el catálogo de inmuebles asociados con control de disponibilidad y relación 1:N.
 >
-> Sus áreas funcionales clave son: 1. **Gestión de Propiedades y Propietarios:** Registro de propietarios con identificación unívoca y administración de inmuebles asociados (control de disponibilidad, características y estado activo). 2. **Contratos y Arrendatarios:** Asignación de arrendatarios a inmuebles mediante contratos con número único, vigencia temporal (fecha inicio / fecha fin), valor de canon mensual, depósitos e incrementos periódicos. 3. **Gestión de Cartera y Recaudos:** Emisión periódica de cobros mensuales por contrato y registro detallado de pagos multicanal (transferencia, consignación, efectivo, pasarela). 4. **Liquidación y Distribución a Propietarios:** Cálculo y registro de la dispersión de fondos hacia los propietarios una vez deducidas las comisiones de administración o costos de mantenimiento. 5. **Mesa de Mantenimiento:** Recepción y seguimiento de tickets de averías o mantenimiento, asignación a proveedores certificados, cotización con aprobación formal de costos y órdenes de trabajo con soporte de evidencia documental para el cierre. 6. **Seguridad RBAC (Role-Based Access Control):** Restricción de acceso a operaciones críticas según el perfil del usuario (ADMIN, ASESOR, CARTERA, MANTENIMIENTO, PROPIETARIO_CONSULTA).
+> **Entidades de Dominio:** `Propietario` (tipo y número de documento único, datos de contacto) e `Inmueble` (nombre, descripción, referencia foránea al propietario y estado de disponibilidad).
 
-------------------------------------------------------------------------
+### 8.1 — features/business/properties/domain/entities/propietario.entity.ts
 
-### 8.2 — Diagrama Entidad-Relación del Dominio (ERD)
+Entidad pura de dominio para el Propietario. No depende de Sequelize ni del framework; modela la identidad del titular del inmueble.
 
-El siguiente diagrama detalla las 10 entidades de dominio de Arrenda360, sus atributos principales, claves primarias, claves foráneas (`FK`) y restricciones de unicidad (`UQ`):
+**Archivo:** `src/features/business/properties/domain/entities/propietario.entity.ts`
 
-``` mermaid
-erDiagram
-    PROPIETARIOS ||--o{ INMUEBLES : "posee (1:N)"
-    INMUEBLES ||--o{ CONTRATOS : "objeto_arrendamiento (1:N)"
-    ARRENDATARIOS ||--o{ CONTRATOS : "suscribe (1:N)"
-    CONTRATOS ||--o{ COBROS_MENSUALES : "genera (1:N)"
-    COBROS_MENSUALES ||--o{ PAGOS : "recauda (1:N)"
-    PAGOS ||--o{ DISTRIBUCIONES_PAGO : "distribuye (1:N)"
-    PROPIETARIOS ||--o{ DISTRIBUCIONES_PAGO : "beneficiario (1:N)"
-    INMUEBLES ||--o{ TICKETS_MANTENIMIENTO : "presenta_dano (1:N)"
-    TICKETS_MANTENIMIENTO ||--o{ ORDENES_MANTENIMIENTO : "atiende (1:N)"
-    PROVEEDORES ||--o{ ORDENES_MANTENIMIENTO : "ejecuta (1:N)"
-
-    PROPIETARIOS {
-        int id PK
-        string tipo_documento
-        string numero_documento UK
-        string nombre
-        string telefono
-        string email
-        boolean is_active
-    }
-
-    INMUEBLES {
-        int id PK
-        int propietario_id FK
-        string nombre
-        string descripcion
-        boolean is_active
-    }
-
-    ARRENDATARIOS {
-        int id PK
-        string tipo_documento
-        string numero_documento UK
-        string nombre
-        string telefono
-        string email
-        boolean is_active
-    }
-
-    CONTRATOS {
-        int id PK
-        int inmueble_id FK
-        int arrendatario_id FK
-        string numero UK
-        date fecha_inicio
-        date fecha_fin
-        decimal valor
-        string estado
-    }
-
-    COBROS_MENSUALES {
-        int id PK
-        int contrato_id FK
-        date fecha
-        decimal valor
-        string estado
-        string observaciones
-    }
-
-    PAGOS {
-        int id PK
-        int cobro_id FK
-        string metodo
-        decimal monto
-        date fecha
-        string estado
-    }
-
-    DISTRIBUCIONES_PAGO {
-        int id PK
-        int pago_id FK
-        int propietario_id FK
-        decimal valor_distribuido
-        date fecha_distribucion
-        string estado
-    }
-
-    TICKETS_MANTENIMIENTO {
-        int id PK
-        int inmueble_id FK
-        date fecha
-        decimal costo
-        string estado
-        string descripcion
-    }
-
-    PROVEEDORES {
-        int id PK
-        string nombre
-        string telefono
-        string email
-        boolean is_active
-    }
-
-    ORDENES_MANTENIMIENTO {
-        int id PK
-        int ticket_id FK
-        int proveedor_id FK
-        date fecha_aprobacion
-        decimal costo_estimado
-        decimal costo_final
-        string estado
-        string descripcion
-    }
-```
-
-------------------------------------------------------------------------
-
-### 8.3 — Módulo 1: Inmuebles y Propietarios (`src/features/business/properties`)
-
-Este módulo administra la oferta inmobiliaria y los datos de contacto y tributarios de los propietarios.
-
-#### 8.3.1 — Modelos Sequelize
-
-- **`propietario.model.ts`**: Modela la tabla `propietarios`. Define índice único para `numero_documento` y relación `@HasMany(() => InmuebleModel)`.
-- **`inmueble.model.ts`**: Modela la tabla `inmuebles`. Contiene `@ForeignKey(() => PropietarioModel)` en `propietario_id` y `@BelongsTo(() => PropietarioModel)`.
-
-``` typescript
-// Fragmento de inmueble.model.ts
-@Table({ tableName: 'inmuebles', timestamps: true, underscored: true })
-export class InmuebleModel extends Model {
-  @Column({ type: DataType.INTEGER, autoIncrement: true, primaryKey: true })
-  declare id: number;
-
-  @Column({ type: DataType.STRING(150), allowNull: false })
-  declare nombre: string;
-
-  @Column({ type: DataType.TEXT, allowNull: true })
-  declare descripcion: string;
-
-  @ForeignKey(() => PropietarioModel)
-  @Column({ type: DataType.INTEGER, allowNull: false, field: 'propietario_id' })
-  declare propietarioId: number;
-
-  @Column({ type: DataType.BOOLEAN, defaultValue: true, field: 'is_active' })
-  declare isActive: boolean;
-
-  @BelongsTo(() => PropietarioModel)
-  declare propietario?: PropietarioModel;
+``` bash
+mkdir -p src/features/business/properties/domain/entities
+cat > src/features/business/properties/domain/entities/propietario.entity.ts <<'EOF_BACKEND_IA'
+export interface PropietarioProps {
+  id?: number;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  nombre: string;
+  telefono: string;
+  email: string;
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
-```
 
-#### 8.3.2 — Endpoints HTTP
+export class Propietario {
+  id?: number;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  nombre: string;
+  telefono: string;
+  email: string;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 
-| Método | Ruta | Descripción | Rol Mínimo Requerido |
-|----|----|----|----|
-| `POST` | `/api/propietarios` | Registra un nuevo propietario con validación de documento único. | `ADMIN`, `ASESOR` |
-| `GET` | `/api/propietarios` | Lista todos los propietarios activos. | Cualquier rol autenticado |
-| `POST` | `/api/inmuebles` | Registra un nuevo inmueble asociándolo a un propietario existente. | `ADMIN`, `ASESOR` |
-| `GET` | `/api/inmuebles` | Consulta el catálogo de inmuebles con sus datos de propietario. | Cualquier rol autenticado |
-
-------------------------------------------------------------------------
-
-### 8.4 — Módulo 2: Contratos y Arrendatarios (`src/features/business/leases`)
-
-Este módulo formaliza la relación comercial entre el arrendador y el inquilino.
-
-#### 8.4.1 — Reglas de Negocio
-
-1.  **Unicidad Contractual:** Cada contrato posee un identificador legal (`numero`) único en el sistema.
-2.  **Coherencia Temporal:** La `fecha_fin` del contrato debe ser estrictamente posterior a la `fecha_inicio`.
-3.  **Disponibilidad:** Solo se pueden generar contratos sobre inmuebles que se encuentren activos y disponibles.
-4.  **Estados Contractuales:** `ACTIVO`, `FINALIZADO`, `SUSPENDIDO`, `VENCIDO`.
-
-#### 8.4.2 — Control de Acceso (RBAC)
-
-La emisión de contratos está protegida mediante el decorador `@Roles(Role.ADMIN, Role.ASESOR)`. Si un usuario con rol `CARTERA` o `PROPIETARIO_CONSULTA` intenta crear un contrato, el sistema rechaza la petición con código HTTP `403 Forbidden`.
-
-``` typescript
-@ApiTags('Contratos y Arrendatarios')
-@Controller()
-@UseGuards(RolesGuard)
-export class LeasesController {
-  constructor(private readonly leasesService: LeasesService) {}
-
-  @Post('contratos')
-  @Roles(Role.ADMIN, Role.ASESOR)
-  @ApiOperation({ summary: 'Crear contrato de arrendamiento (Requiere ADMIN o ASESOR)' })
-  async createContrato(@Body() dto: CreateContratoDto) {
-    return this.leasesService.createContrato(dto);
+  constructor(props: PropietarioProps) {
+    this.id = props.id;
+    this.tipoDocumento = props.tipoDocumento;
+    this.numeroDocumento = props.numeroDocumento;
+    this.nombre = props.nombre;
+    this.telefono = props.telefono;
+    this.email = props.email;
+    this.isActive = props.isActive ?? true;
+    this.createdAt = props.createdAt;
+    this.updatedAt = props.updatedAt;
   }
 }
+EOF_BACKEND_IA
 ```
 
-------------------------------------------------------------------------
+### 8.2 — features/business/properties/domain/entities/inmueble.entity.ts
 
-### 8.5 — Módulo 3: Recaudos y Cartera (`src/features/business/receivables`)
+Entidad pura de dominio para el Inmueble: encapsula los atributos físicos y la asociación al propietario titular.
 
-Gestiona la facturación mensual del canon de arrendamiento y la recepción de pagos.
+**Archivo:** `src/features/business/properties/domain/entities/inmueble.entity.ts`
 
-#### 8.5.1 — Estructura de Entidades
-
-- **`CobroMensualModel` (`cobros_mensuales`)**: Representa la cuenta de cobro generada periódicamente para un contrato específico. Contiene fecha de exigibilidad, valor a pagar y estado (`PENDIENTE`, `PAGADO`, `ANULADO`).
-- **`PagoModel` (`pagos`)**: Registra la transacción financiera de recaudo asociada a un cobro (`TRANSFERENCIA`, `EFECTIVO`, `PSE`, `TARJETA`, `CONSIGNACION`).
-
-#### 8.5.2 — Seguridad en Cartera
-
-La generación de cobros y el registro de recaudos está restringido al departamento financiero: `@Roles(Role.ADMIN, Role.CARTERA)`.
-
-------------------------------------------------------------------------
-
-### 8.6 — Módulo 4: Liquidación a Propietarios (`src/features/business/owner-settlements`)
-
-Una vez recaudado el dinero de los inquilinos, este módulo liquida los recursos a los propietarios del inmueble.
-
-#### 8.6.1 — Modelo `distribucion-pago.model.ts`
-
-Modela la tabla `distribuciones_pago`. Registra: - `pago_id`: Referencia al pago recaudado. - `propietario_id`: Propietario que recibe el valor. - `valor_distribuido`: Monto neto distribuido tras comisiones o deducciones de mantenimiento. - `fecha_distribucion`: Marca temporal de la dispersión de fondos. - `estado`: `PENDIENTE`, `PROCESADO`, `TRANSFERIDO`.
-
-#### 8.6.2 — Acceso para Propietarios
-
-El endpoint `GET /api/distribuciones/propietario/:propietarioId` permite que los propietarios con el rol `PROPIETARIO_CONSULTA` consulten el histórico de sus pagos recibidos de forma segura sin acceder a la información de otros clientes.
-
-------------------------------------------------------------------------
-
-### 8.7 — Módulo 5: Mantenimiento e Incidencias (`src/features/business/maintenance`)
-
-Resuelve el ciclo de vida de reparaciones locativas e incidencias técnicas en los inmuebles.
-
-#### 8.7.1 — Entidades y Flujo Operativo
-
-1.  **`TicketMantenimientoModel` (`tickets_mantenimiento`)**: El asesor o arrendatario reporta un daño en el inmueble (`inmueble_id`, `descripcion`, `costo_estimado`, `estado: ABIERTO`).
-2.  **`ProveedorModel` (`proveedores`)**: Directorio de técnicos y contratistas calificados (plomería, electricidad, pintura, cerrajería).
-3.  **`OrdenMantenimientoModel` (`ordenes_mantenimiento`)**: Asignación formal del trabajo al proveedor. Controla:
-    - `fecha_aprobacion`: Aprobación formal del presupuesto.
-    - `costo_estimado` vs `costo_final`: Control de desviaciones presupuestales.
-    - `descripcion`: Bitácora del trabajo realizado y evidencias fotográficas de cierre.
-    - `estado`: `COTIZADO`, `APROBADO`, `EN_EJECUCION`, `FINALIZADO`, `RECHAZADO`.
-
-------------------------------------------------------------------------
-
-### 8.8 — Matriz de Control de Acceso Basado en Roles (RBAC)
-
-La plataforma cuenta con un sistema transversal de control de acceso implementado con `@Roles()` y `RolesGuard`:
-
-``` typescript
-// src/common/enums/role.enum.ts
-export enum Role {
-  ADMIN = 'ADMIN',
-  ASESOR = 'ASESOR',
-  CARTERA = 'CARTERA',
-  MANTENIMIENTO = 'MANTENIMIENTO',
-  PROPIETARIO_CONSULTA = 'PROPIETARIO_CONSULTA',
+``` bash
+mkdir -p src/features/business/properties/domain/entities
+cat > src/features/business/properties/domain/entities/inmueble.entity.ts <<'EOF_BACKEND_IA'
+export interface InmuebleProps {
+  id?: number;
+  propietarioId: number;
+  nombre: string;
+  descripcion: string;
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+export class Inmueble {
+  id?: number;
+  propietarioId: number;
+  nombre: string;
+  descripcion: string;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+
+  constructor(props: InmuebleProps) {
+    this.id = props.id;
+    this.propietarioId = props.propietarioId;
+    this.nombre = props.nombre;
+    this.descripcion = props.descripcion;
+    this.isActive = props.isActive ?? true;
+    this.createdAt = props.createdAt;
+    this.updatedAt = props.updatedAt;
+  }
+}
+EOF_BACKEND_IA
 ```
 
-#### Matriz de Roles y Privilegios por Módulo
+### 8.3 — features/business/properties/domain/interfaces/propietario-repository.interface.ts
 
-| Módulo | Endpoint / Acción | ADMIN | ASESOR | CARTERA | MANTENIMIENTO | PROPIETARIO_CONSULTA |
-|----|----|:--:|:--:|:--:|:--:|:--:|
-| **Properties** | Crear Inmueble / Propietario | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Properties** | Consultar Catálogo Inmuebles | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Leases** | Crear Contrato de Arrendamiento | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Receivables** | Emitir Cobro Mensual / Registrar Pago | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **Owner Settlements** | Crear Distribución de Fondos | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **Owner Settlements** | Consultar Liquidaciones Propias | ✅ | ❌ | ✅ | ❌ | ✅ |
-| **Maintenance** | Registrar Ticket de Mantenimiento | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Maintenance** | Aprobar y Cerrar Orden de Trabajo | ✅ | ❌ | ❌ | ✅ | ❌ |
+Contrato de repositorio (puerto en Arquitectura Hexagonal / Clean Architecture) que desacopla la lógica de negocio de la tecnología de persistencia.
 
-> [!TIP] **Autenticación en Swagger:** Para evaluar los endpoints protegidos en `/api/docs`, se puede enviar el header `x-role` con cualquiera de los valores (`ADMIN`, `ASESOR`, `CARTERA`, `MANTENIMIENTO`, `PROPIETARIO_CONSULTA`).
+**Archivo:** `src/features/business/properties/domain/interfaces/propietario-repository.interface.ts`
+
+``` bash
+mkdir -p src/features/business/properties/domain/interfaces
+cat > src/features/business/properties/domain/interfaces/propietario-repository.interface.ts <<'EOF_BACKEND_IA'
+import { Propietario } from '../entities/propietario.entity';
+import { PaginatedResult } from '../../../../../common/interfaces/pagination.interface';
+
+export const PROPIETARIO_REPOSITORY_TOKEN = 'PROPIETARIO_REPOSITORY_TOKEN';
+export const PROPIETARIO_REPOSITORY = 'PROPIETARIO_REPOSITORY';
+export const PROPIETARIO_REPOSITORY_TOKEN = PROPIETARIO_REPOSITORY;
+
+export interface PropietarioFindAllParams {
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+  search?: string;
+}
+
+export interface IPropietarioRepository {
+  create(propietario: Propietario): Promise<Propietario>;
+  update(propietario: Propietario): Promise<Propietario>;
+  delete(id: number): Promise<void>;
+  findById(id: number): Promise<Propietario | null>;
+  findByDocumento(numeroDocumento: string): Promise<Propietario | null>;
+  findAll(filters?: any): Promise<Propietario[]>;
+  update(id: number, propietario: Partial<Propietario>): Promise<Propietario>;
+  delete(id: number): Promise<void>;
+  findByNumeroDocumento(numeroDocumento: string): Promise<Propietario | null>;
+  findAll(params: PropietarioFindAllParams): Promise<PaginatedResult<Propietario>>;
+}
+EOF_BACKEND_IA
+```
+
+### 8.4 — features/business/properties/infrastructure/persistence/models/propietario.model.ts
+
+Modelo Sequelize TypeScript para la tabla física `propietarios`. Implementa restricción `unique: true` sobre `numero_documento` y relación `@HasMany(() => InmuebleModel)`.
+
+**Archivo:** `src/features/business/properties/infrastructure/persistence/models/propietario.model.ts`
+
+``` bash
+mkdir -p src/features/business/properties/infrastructure/persistence/models
+cat > src/features/business/properties/infrastructure/persistence/models/propietario.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  Column,
+  CreatedAt,
+  DataType,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { InmuebleModel } from './inmueble.model';
+
+@Table({ tableName: 'propietarios', timestamps: true })
+export class PropietarioModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    field: 'tipo_documento',
+  })
+  declare tipoDocumento: string;
+
+  @Column({
+    type: DataType.STRING(50),
+    allowNull: false,
+    unique: true,
+    field: 'numero_documento',
+  })
+  declare numeroDocumento: string;
+
+  @Column({
+    type: DataType.STRING(150),
+    allowNull: false,
+  })
+  declare nombre: string;
+
+  @Column({
+    type: DataType.STRING(50),
+    allowNull: true,
+  })
+  declare telefono: string;
+
+  @Column({
+    type: DataType.STRING(150),
+    allowNull: true,
+  })
+  declare email: string;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    field: 'is_active',
+  })
+  declare isActive: boolean;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @HasMany(() => InmuebleModel, 'propietarioId')
+  declare inmuebles: InmuebleModel[];
+}
+EOF_BACKEND_IA
+```
+
+### 8.5 — features/business/properties/infrastructure/persistence/models/inmueble.model.ts
+
+Modelo Sequelize TypeScript para la tabla física `inmuebles`. Contiene `@ForeignKey(() => PropietarioModel)` y `@BelongsTo(() => PropietarioModel)`.
+
+**Archivo:** `src/features/business/properties/infrastructure/persistence/models/inmueble.model.ts`
+
+``` bash
+mkdir -p src/features/business/properties/infrastructure/persistence/models
+cat > src/features/business/properties/infrastructure/persistence/models/inmueble.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { PropietarioModel } from './propietario.model';
+
+@Table({ tableName: 'inmuebles', timestamps: true })
+export class InmuebleModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => PropietarioModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'propietario_id',
+  })
+  declare propietarioId: number;
+
+  @Column({
+    type: DataType.STRING(150),
+    allowNull: false,
+  })
+  declare nombre: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare descripcion: string;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    field: 'is_active',
+  })
+  declare isActive: boolean;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => PropietarioModel)
+  declare propietario: PropietarioModel;
+}
+EOF_BACKEND_IA
+```
+
+### 8.6 — features/business/properties/presentation/http/controllers/propietarios.controller.ts
+
+Controlador REST para Propietarios con decoradores Swagger y control de acceso RBAC (`@Roles(Role.ADMIN, Role.ASESOR)`).
+
+**Archivo:** `src/features/business/properties/presentation/http/controllers/propietarios.controller.ts`
+
+``` bash
+mkdir -p src/features/business/properties/presentation/http/controllers
+cat > src/features/business/properties/presentation/http/controllers/propietarios.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreatePropietarioDto } from '../../../application/dto/propietario/create-propietario.dto';
+import { UpdatePropietarioDto } from '../../../application/dto/propietario/update-propietario.dto';
+import { PropietarioFilterDto } from '../../../application/dto/propietario/propietario-filter.dto';
+import { PropietarioResponseDto } from '../../../application/dto/propietario/propietario-response.dto';
+import { CreatePropietarioUseCase } from '../../../application/use-cases/propietario/create-propietario.use-case';
+import { ListPropietariosUseCase } from '../../../application/use-cases/propietario/list-propietarios.use-case';
+import { GetPropietarioUseCase } from '../../../application/use-cases/propietario/get-propietario.use-case';
+import { UpdatePropietarioUseCase } from '../../../application/use-cases/propietario/update-propietario.use-case';
+import { DeletePropietarioUseCase } from '../../../application/use-cases/propietario/delete-propietario.use-case';
+
+@ApiTags('Properties - Propietarios')
+@Controller('propietarios')
+@UseGuards(RolesGuard)
+export class PropietariosController {
+  constructor(
+    private readonly createPropietarioUseCase: CreatePropietarioUseCase,
+    private readonly listPropietariosUseCase: ListPropietariosUseCase,
+    private readonly getPropietarioUseCase: GetPropietarioUseCase,
+    private readonly updatePropietarioUseCase: UpdatePropietarioUseCase,
+    private readonly deletePropietarioUseCase: DeletePropietarioUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Registrar un nuevo propietario' })
+  @ApiCreatedResponse({ type: PropietarioResponseDto })
+  create(@Body() dto: CreatePropietarioDto) {
+    return this.createPropietarioUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar propietarios con paginación y filtros' })
+  @ApiOkResponse({ type: [PropietarioResponseDto] })
+  findAll(@Query() filter: PropietarioFilterDto) {
+    return this.listPropietariosUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un propietario por ID' })
+  @ApiOkResponse({ type: PropietarioResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getPropietarioUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Actualizar datos de un propietario' })
+  @ApiOkResponse({ type: PropietarioResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdatePropietarioDto,
+  ) {
+    return this.updatePropietarioUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un propietario' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deletePropietarioUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### 8.7 — features/business/properties/presentation/http/controllers/inmuebles.controller.ts
+
+Controlador REST para Inmuebles: catálogo inmobiliario con endpoints de consulta pública y mutaciones protegidas para `ADMIN` y `ASESOR`.
+
+**Archivo:** `src/features/business/properties/presentation/http/controllers/inmuebles.controller.ts`
+
+``` bash
+mkdir -p src/features/business/properties/presentation/http/controllers
+cat > src/features/business/properties/presentation/http/controllers/inmuebles.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateInmuebleDto } from '../../../application/dto/inmueble/create-inmueble.dto';
+import { UpdateInmuebleDto } from '../../../application/dto/inmueble/update-inmueble.dto';
+import { InmuebleFilterDto } from '../../../application/dto/inmueble/inmueble-filter.dto';
+import { InmuebleResponseDto } from '../../../application/dto/inmueble/inmueble-response.dto';
+import { CreateInmuebleUseCase } from '../../../application/use-cases/inmueble/create-inmueble.use-case';
+import { ListInmueblesUseCase } from '../../../application/use-cases/inmueble/list-inmuebles.use-case';
+import { GetInmuebleUseCase } from '../../../application/use-cases/inmueble/get-inmueble.use-case';
+import { UpdateInmuebleUseCase } from '../../../application/use-cases/inmueble/update-inmueble.use-case';
+import { DeleteInmuebleUseCase } from '../../../application/use-cases/inmueble/delete-inmueble.use-case';
+
+@ApiTags('Properties - Inmuebles')
+@Controller('inmuebles')
+@UseGuards(RolesGuard)
+export class InmueblesController {
+  constructor(
+    private readonly createInmuebleUseCase: CreateInmuebleUseCase,
+    private readonly listInmueblesUseCase: ListInmueblesUseCase,
+    private readonly getInmuebleUseCase: GetInmuebleUseCase,
+    private readonly updateInmuebleUseCase: UpdateInmuebleUseCase,
+    private readonly deleteInmuebleUseCase: DeleteInmuebleUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Registrar un nuevo inmueble' })
+  @ApiCreatedResponse({ type: InmuebleResponseDto })
+  create(@Body() dto: CreateInmuebleDto) {
+    return this.createInmuebleUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar inmuebles con filtros y paginación' })
+  @ApiOkResponse({ type: [InmuebleResponseDto] })
+  findAll(@Query() filter: InmuebleFilterDto) {
+    return this.listInmueblesUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un inmueble por ID' })
+  @ApiOkResponse({ type: InmuebleResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getInmuebleUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Actualizar datos de un inmueble' })
+  @ApiOkResponse({ type: InmuebleResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateInmuebleDto,
+  ) {
+    return this.updateInmuebleUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un inmueble' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteInmuebleUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### 8.8 — features/business/properties/properties.module.ts
+
+Módulo NestJS de Properties: integra controladores, proveedores de persistencia y casos de uso.
+
+**Archivo:** `src/features/business/properties/properties.module.ts`
+
+``` bash
+mkdir -p src/features/business/properties
+cat > src/features/business/properties/properties.module.ts <<'EOF_BACKEND_IA'
+import { Module } from '@nestjs/common';
+import { PROPIETARIO_REPOSITORY_TOKEN } from './domain/interfaces/propietario-repository.interface';
+import { INMUEBLE_REPOSITORY_TOKEN } from './domain/interfaces/inmueble-repository.interface';
+import {
+  PROPIETARIO_REPOSITORY,
+  PROPIETARIO_REPOSITORY_TOKEN,
+} from './domain/interfaces/propietario-repository.interface';
+import {
+  INMUEBLE_REPOSITORY,
+  INMUEBLE_REPOSITORY_TOKEN,
+} from './domain/interfaces/inmueble-repository.interface';
+import { PropietarioRepository } from './infrastructure/persistence/repositories/propietario.repository';
+import { InmuebleRepository } from './infrastructure/persistence/repositories/inmueble.repository';
+import { CreatePropietarioUseCase } from './application/use-cases/propietario/create-propietario.use-case';
+import { ListPropietariosUseCase } from './application/use-cases/propietario/list-propietarios.use-case';
+import { GetPropietarioUseCase } from './application/use-cases/propietario/get-propietario.use-case';
+import { UpdatePropietarioUseCase } from './application/use-cases/propietario/update-propietario.use-case';
+import { DeletePropietarioUseCase } from './application/use-cases/propietario/delete-propietario.use-case';
+import { CreateInmuebleUseCase } from './application/use-cases/inmueble/create-inmueble.use-case';
+import { ListInmueblesUseCase } from './application/use-cases/inmueble/list-inmuebles.use-case';
+import { GetInmuebleUseCase } from './application/use-cases/inmueble/get-inmueble.use-case';
+import { UpdateInmuebleUseCase } from './application/use-cases/inmueble/update-inmueble.use-case';
+import { DeleteInmuebleUseCase } from './application/use-cases/inmueble/delete-inmueble.use-case';
+import { PropietariosController } from './presentation/http/controllers/propietarios.controller';
+import { InmueblesController } from './presentation/http/controllers/inmuebles.controller';
+
+@Module({
+  controllers: [PropietariosController, InmueblesController],
+  providers: [
+    { provide: PROPIETARIO_REPOSITORY_TOKEN, useClass: PropietarioRepository },
+    { provide: INMUEBLE_REPOSITORY_TOKEN, useClass: InmuebleRepository },
+    PropietarioRepository,
+    { provide: PROPIETARIO_REPOSITORY, useExisting: PropietarioRepository },
+    { provide: PROPIETARIO_REPOSITORY_TOKEN, useExisting: PropietarioRepository },
+    InmuebleRepository,
+    { provide: INMUEBLE_REPOSITORY, useExisting: InmuebleRepository },
+    { provide: INMUEBLE_REPOSITORY_TOKEN, useExisting: InmuebleRepository },
+    CreatePropietarioUseCase,
+    ListPropietariosUseCase,
+    GetPropietarioUseCase,
+    UpdatePropietarioUseCase,
+    DeletePropietarioUseCase,
+    CreateInmuebleUseCase,
+    ListInmueblesUseCase,
+    GetInmuebleUseCase,
+    UpdateInmuebleUseCase,
+    DeleteInmuebleUseCase,
+  ],
+  exports: [PROPIETARIO_REPOSITORY_TOKEN, INMUEBLE_REPOSITORY_TOKEN],
+  exports: [
+    PROPIETARIO_REPOSITORY,
+    PROPIETARIO_REPOSITORY_TOKEN,
+    INMUEBLE_REPOSITORY,
+    INMUEBLE_REPOSITORY_TOKEN,
+  ],
+})
+export class PropertiesModule {}
+EOF_BACKEND_IA
+```
+
+### 8.9 — Verificar tablas físicas `propietarios` e `inmuebles` y API
+
+Arranca la aplicación. Sequelize genera o verifica las tablas relacionales y Swagger expone los endpoints en `/api/docs`.
+
+``` bash
+npm run start:dev
+```
 
 ------------------------------------------------------------------------
 
-### 8.9 — Registro Centralizado en Sequelize Factory
+## FASE 9 — `08_BUSINESS_LEASES` (Arrendatarios y Contratos)
 
-En `src/infrastructure/database/sequelize/sequelize.factory.ts`, la constante `ALL_MODELS` registra los 10 modelos de persistencia para su sincronización automática:
+### Business — Leases / Gestión Contractual de Arrendamiento (CA & DDD)
 
-``` typescript
+> **Objetivo de la fase:** Administrar los contratos de arrendamiento y el padrón de arrendatarios. Relaciona un `Inmueble` disponible con un `Arrendatario`, fijando fecha de inicio, fecha de fin, valor del canon mensual, incrementos y depósitos.
+>
+> **Entidades:** `Arrendatario` (identificación y contacto) y `Contrato` (número único, fechas, canon pactado, estado `ACTIVO`, `VENCIDO`, `FINALIZADO`).
+
+### 9.1 — features/business/leases/domain/entities/contrato.entity.ts
+
+Entidad de dominio para el Contrato de Arrendamiento: valida que el canon sea positivo y que la fecha de finalización sea posterior a la de inicio.
+
+**Archivo:** `src/features/business/leases/domain/entities/contrato.entity.ts`
+
+``` bash
+mkdir -p src/features/business/leases/domain/entities
+cat > src/features/business/leases/domain/entities/contrato.entity.ts <<'EOF_BACKEND_IA'
+export interface ContratoProps {
+  id?: number;
+  inmuebleId: number;
+  arrendatarioId: number;
+  numero: string;
+  fechaInicio: Date;
+  fechaFin: Date;
+  valor: number;
+  estado?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export class Contrato {
+  id?: number;
+  inmuebleId: number;
+  arrendatarioId: number;
+  numero: string;
+  fechaInicio: Date;
+  fechaFin: Date;
+  valor: number;
+  estado: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+
+  constructor(props: ContratoProps) {
+    this.id = props.id;
+    this.inmuebleId = props.inmuebleId;
+    this.arrendatarioId = props.arrendatarioId;
+    this.numero = props.numero;
+    this.fechaInicio = props.fechaInicio;
+    this.fechaFin = props.fechaFin;
+    this.valor = props.valor;
+    this.estado = props.estado ?? 'ACTIVO';
+    this.createdAt = props.createdAt;
+    this.updatedAt = props.updatedAt;
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-1727320854.png)
+
+### 9.2 — features/business/leases/infrastructure/persistence/models/contrato.model.ts
+
+Modelo Sequelize con claves foráneas `@ForeignKey` hacia `InmuebleModel` y `ArrendatarioModel`, e índice único sobre el número de contrato.
+
+**Archivo:** `src/features/business/leases/infrastructure/persistence/models/contrato.model.ts`
+
+``` bash
+mkdir -p src/features/business/leases/infrastructure/persistence/models
+cat > src/features/business/leases/infrastructure/persistence/models/contrato.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { InmuebleModel } from '../../properties/infrastructure/persistence/models/inmueble.model';
+import { ArrendatarioModel } from './arrendatario.model';
+
+@Table({ tableName: 'contratos', timestamps: true })
+export class ContratoModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => InmuebleModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'inmueble_id',
+  })
+  declare inmuebleId: number;
+
+  @ForeignKey(() => ArrendatarioModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'arrendatario_id',
+  })
+  declare arrendatarioId: number;
+
+  @Column({
+    type: DataType.STRING(50),
+    allowNull: false,
+    unique: true,
+  })
+  declare numero: string;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+    field: 'fecha_inicio',
+  })
+  declare fechaInicio: Date;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+    field: 'fecha_fin',
+  })
+  declare fechaFin: Date;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+  })
+  declare valor: number;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'ACTIVO',
+  })
+  declare estado: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => InmuebleModel)
+  declare inmueble: InmuebleModel;
+
+  @BelongsTo(() => ArrendatarioModel)
+  declare arrendatario: ArrendatarioModel;
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-3535363705.png)
+
+### 9.3 — features/business/leases/presentation/http/controllers/contratos.controller.ts
+
+Controlador REST con protección RBAC: la creación de contratos requiere rol `ADMIN` o `ASESOR` (`@Roles(Role.ADMIN, Role.ASESOR)`).
+
+**Archivo:** `src/features/business/leases/presentation/http/controllers/contratos.controller.ts`
+
+``` bash
+mkdir -p src/features/business/leases/presentation/http/controllers
+cat > src/features/business/leases/presentation/http/controllers/contratos.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateContratoDto } from '../../../application/dto/contrato/create-contrato.dto';
+import { UpdateContratoDto } from '../../../application/dto/contrato/update-contrato.dto';
+import { ContratoFilterDto } from '../../../application/dto/contrato/contrato-filter.dto';
+import { ContratoResponseDto } from '../../../application/dto/contrato/contrato-response.dto';
+import { CreateContratoUseCase } from '../../../application/use-cases/contrato/create-contrato.use-case';
+import { ListContratosUseCase } from '../../../application/use-cases/contrato/list-contratos.use-case';
+import { GetContratoUseCase } from '../../../application/use-cases/contrato/get-contrato.use-case';
+import { UpdateContratoUseCase } from '../../../application/use-cases/contrato/update-contrato.use-case';
+import { DeleteContratoUseCase } from '../../../application/use-cases/contrato/delete-contrato.use-case';
+
+@ApiTags('Leases - Contratos')
+@Controller('contratos')
+@UseGuards(RolesGuard)
+export class ContratosController {
+  constructor(
+    private readonly createContratoUseCase: CreateContratoUseCase,
+    private readonly listContratosUseCase: ListContratosUseCase,
+    private readonly getContratoUseCase: GetContratoUseCase,
+    private readonly updateContratoUseCase: UpdateContratoUseCase,
+    private readonly deleteContratoUseCase: DeleteContratoUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Crear un nuevo contrato de arrendamiento (RBAC: ADMIN, ASESOR)' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: ContratoResponseDto })
+  create(@Body() dto: CreateContratoDto) {
+    return this.createContratoUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar contratos con filtros y paginación' })
+  @ApiOkResponse({ type: [ContratoResponseDto] })
+  findAll(@Query() filter: ContratoFilterDto) {
+    return this.listContratosUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un contrato por ID' })
+  @ApiOkResponse({ type: ContratoResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getContratoUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.ASESOR)
+  @ApiOperation({ summary: 'Actualizar un contrato de arrendamiento' })
+  @ApiOkResponse({ type: ContratoResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateContratoDto,
+  ) {
+    return this.updateContratoUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un contrato' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteContratoUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2409445848.png)
+
+### 9.4 — Verificar tablas físicas `arrendatarios` y `contratos` y API
+
+Arranca la app y valida la exposición en Swagger de `/api/contratos` y `/api/arrendatarios`.
+
+``` bash
+npm run start:dev
+```
+
+------------------------------------------------------------------------
+
+## FASE 10 — `09_BUSINESS_RECEIVABLES` (Cobros Mensuales y Pagos)
+
+### Business — Receivables / Cartera, Cobros Mensuales y Recaudos (CA & DDD)
+
+> **Objetivo de la fase:** Administrar la facturación periódica y la recepción de recaudos. Emite cuentas de cobro mensuales sobre contratos activos y registra los pagos con control de método, fecha y monto.
+>
+> **Seguridad RBAC:** Operaciones de cartera restringidas al departamento financiero con roles `ADMIN` y `CARTERA`.
+
+### 10.1 — features/business/receivables/infrastructure/persistence/models/cobro-mensual.model.ts
+
+Modelo Sequelize para la tabla `cobros_mensuales`. Enlaza directamente al contrato de arrendamiento.
+
+**Archivo:** `src/features/business/receivables/infrastructure/persistence/models/cobro-mensual.model.ts`
+
+``` bash
+mkdir -p src/features/business/receivables/infrastructure/persistence/models
+cat > src/features/business/receivables/infrastructure/persistence/models/cobro-mensual.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { ContratoModel } from '../../leases/infrastructure/persistence/models/contrato.model';
+import { PagoModel } from './pago.model';
+
+@Table({ tableName: 'cobros_mensuales', timestamps: true })
+export class CobroMensualModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => ContratoModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'contrato_id',
+  })
+  declare contratoId: number;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+  })
+  declare fecha: Date;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+  })
+  declare valor: number;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'PENDIENTE',
+  })
+  declare estado: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+  })
+  declare observaciones: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => ContratoModel)
+  declare contrato: ContratoModel;
+
+  @HasMany(() => PagoModel, 'cobroId')
+  declare pagos: PagoModel[];
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-565040128.png)
+
+### 10.2 — features/business/receivables/infrastructure/persistence/models/pago.model.ts
+
+Modelo Sequelize para la tabla `pagos`. Registra el método de pago (`TRANSFERENCIA`, `PSE`, `EFECTIVO`), el monto y la fecha de transacción.
+
+**Archivo:** `src/features/business/receivables/infrastructure/persistence/models/pago.model.ts`
+
+``` bash
+mkdir -p src/features/business/receivables/infrastructure/persistence/models
+cat > src/features/business/receivables/infrastructure/persistence/models/pago.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { CobroMensualModel } from './cobro-mensual.model';
+
+@Table({ tableName: 'pagos', timestamps: true })
+export class PagoModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => CobroMensualModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'cobro_id',
+  })
+  declare cobroId: number;
+
+  @Column({
+    type: DataType.STRING(50),
+    allowNull: false,
+  })
+  declare metodo: string;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+  })
+  declare monto: number;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+  })
+  declare fecha: Date;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'APLICADO',
+  })
+  declare estado: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => CobroMensualModel)
+  declare cobro: CobroMensualModel;
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2747024203.png)
+
+### 10.3 — features/business/receivables/presentation/http/controllers/cobros.controller.ts
+
+Controlador REST para Cuentas de Cobro: emisión y seguimiento protegido con `@Roles(Role.ADMIN, Role.CARTERA)`.
+
+**Archivo:** `src/features/business/receivables/presentation/http/controllers/cobros.controller.ts`
+
+``` bash
+mkdir -p src/features/business/receivables/presentation/http/controllers
+cat > src/features/business/receivables/presentation/http/controllers/cobros.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateCobroDto } from '../../../application/dto/cobro/create-cobro.dto';
+import { UpdateCobroDto } from '../../../application/dto/cobro/update-cobro.dto';
+import { CobroFilterDto } from '../../../application/dto/cobro/cobro-filter.dto';
+import { CobroResponseDto } from '../../../application/dto/cobro/cobro-response.dto';
+import { CreateCobroUseCase } from '../../../application/use-cases/cobro/create-cobro.use-case';
+import { ListCobrosUseCase } from '../../../application/use-cases/cobro/list-cobros.use-case';
+import { GetCobroUseCase } from '../../../application/use-cases/cobro/get-cobro.use-case';
+import { UpdateCobroUseCase } from '../../../application/use-cases/cobro/update-cobro.use-case';
+import { DeleteCobroUseCase } from '../../../application/use-cases/cobro/delete-cobro.use-case';
+
+@ApiTags('Receivables - Cobros Mensuales')
+@Controller('cobros')
+@UseGuards(RolesGuard)
+export class CobrosController {
+  constructor(
+    private readonly createCobroUseCase: CreateCobroUseCase,
+    private readonly listCobrosUseCase: ListCobrosUseCase,
+    private readonly getCobroUseCase: GetCobroUseCase,
+    private readonly updateCobroUseCase: UpdateCobroUseCase,
+    private readonly deleteCobroUseCase: DeleteCobroUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Generar cuenta de cobro mensual (RBAC: ADMIN, CARTERA)' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: CobroResponseDto })
+  create(@Body() dto: CreateCobroDto) {
+    return this.createCobroUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar cuentas de cobro con filtros' })
+  @ApiOkResponse({ type: [CobroResponseDto] })
+  findAll(@Query() filter: CobroFilterDto) {
+    return this.listCobrosUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener una cuenta de cobro por ID' })
+  @ApiOkResponse({ type: CobroResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getCobroUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Actualizar una cuenta de cobro' })
+  @ApiOkResponse({ type: CobroResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateCobroDto,
+  ) {
+    return this.updateCobroUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar una cuenta de cobro' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteCobroUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-224855988.png)
+
+### 10.4 — features/business/receivables/presentation/http/controllers/pagos.controller.ts
+
+Controlador REST para Pagos: registro de recaudos protegidos con `@Roles(Role.ADMIN, Role.CARTERA)`.
+
+**Archivo:** `src/features/business/receivables/presentation/http/controllers/pagos.controller.ts`
+
+``` bash
+mkdir -p src/features/business/receivables/presentation/http/controllers
+cat > src/features/business/receivables/presentation/http/controllers/pagos.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreatePagoDto } from '../../../application/dto/pago/create-pago.dto';
+import { UpdatePagoDto } from '../../../application/dto/pago/update-pago.dto';
+import { PagoFilterDto } from '../../../application/dto/pago/pago-filter.dto';
+import { PagoResponseDto } from '../../../application/dto/pago/pago-response.dto';
+import { CreatePagoUseCase } from '../../../application/use-cases/pago/create-pago.use-case';
+import { ListPagosUseCase } from '../../../application/use-cases/pago/list-pagos.use-case';
+import { GetPagoUseCase } from '../../../application/use-cases/pago/get-pago.use-case';
+import { UpdatePagoUseCase } from '../../../application/use-cases/pago/update-pago.use-case';
+import { DeletePagoUseCase } from '../../../application/use-cases/pago/delete-pago.use-case';
+
+@ApiTags('Receivables - Pagos')
+@Controller('pagos')
+@UseGuards(RolesGuard)
+export class PagosController {
+  constructor(
+    private readonly createPagoUseCase: CreatePagoUseCase,
+    private readonly listPagosUseCase: ListPagosUseCase,
+    private readonly getPagoUseCase: GetPagoUseCase,
+    private readonly updatePagoUseCase: UpdatePagoUseCase,
+    private readonly deletePagoUseCase: DeletePagoUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Registrar un pago de canon (RBAC: ADMIN, CARTERA)' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: PagoResponseDto })
+  create(@Body() dto: CreatePagoDto) {
+    return this.createPagoUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar pagos recibidos con filtros' })
+  @ApiOkResponse({ type: [PagoResponseDto] })
+  findAll(@Query() filter: PagoFilterDto) {
+    return this.listPagosUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un pago por ID' })
+  @ApiOkResponse({ type: PagoResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getPagoUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Actualizar un pago' })
+  @ApiOkResponse({ type: PagoResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdatePagoDto,
+  ) {
+    return this.updatePagoUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un pago' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deletePagoUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2994224710.png)
+
+### 10.5 — Verificar tablas físicas `cobros_mensuales` y `pagos` y API
+
+Arranca la aplicación y verifica la sincronización de tablas y Swagger.
+
+``` bash
+npm run start:dev
+```
+
+------------------------------------------------------------------------
+
+## FASE 11 — `10_BUSINESS_OWNER_SETTLEMENTS` (Distribución a Propietarios)
+
+### Business — Owner Settlements / Liquidación y Distribución de Recaudo (CA & DDD)
+
+> **Objetivo de la fase:** Liquida y dispersa los fondos recaudados hacia los propietarios titulares de los inmuebles, deduciendo comisiones administrativas o costos de reparaciones locativas.
+>
+> **Entidad:** `DistribucionPago` (referencia al pago origen, al propietario beneficiario, valor neto liquidado, fecha y estado de transferencia).
+
+### 11.1 — features/business/owner-settlements/infrastructure/persistence/models/distribucion-pago.model.ts
+
+Modelo Sequelize para la tabla `distribuciones_pago`.
+
+**Archivo:** `src/features/business/owner-settlements/infrastructure/persistence/models/distribucion-pago.model.ts`
+
+``` bash
+mkdir -p src/features/business/owner-settlements/infrastructure/persistence/models
+cat > src/features/business/owner-settlements/infrastructure/persistence/models/distribucion-pago.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { PagoModel } from '../../receivables/infrastructure/persistence/models/pago.model';
+import { PropietarioModel } from '../../properties/infrastructure/persistence/models/propietario.model';
+
+@Table({ tableName: 'distribuciones_pago', timestamps: true })
+export class DistribucionPagoModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => PagoModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'pago_id',
+  })
+  declare pagoId: number;
+
+  @ForeignKey(() => PropietarioModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'propietario_id',
+  })
+  declare propietarioId: number;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+    field: 'valor_distribuido',
+  })
+  declare valorDistribuido: number;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+    field: 'fecha_distribucion',
+  })
+  declare fechaDistribucion: Date;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'PENDIENTE',
+  })
+  declare estado: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => PagoModel)
+  declare pago: PagoModel;
+
+  @BelongsTo(() => PropietarioModel)
+  declare propietario: PropietarioModel;
+}
+EOF_BACKEND_IA
+```
+
+![](images/clipboard-318854581.png)
+
+### 11.2 — features/business/owner-settlements/presentation/http/controllers/distribucion-pago.controller.ts
+
+Controlador REST con acceso segmentado: creación protegida para `CARTERA` y consulta habilitada para propietarios con rol `PROPIETARIO_CONSULTA`.
+
+**Archivo:** `src/features/business/owner-settlements/presentation/http/controllers/distribucion-pago.controller.ts`
+
+``` bash
+mkdir -p src/features/business/owner-settlements/presentation/http/controllers
+cat > src/features/business/owner-settlements/presentation/http/controllers/distribucion-pago.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateDistribucionPagoDto } from '../../../application/dto/create-distribucion-pago.dto';
+import { UpdateDistribucionPagoDto } from '../../../application/dto/update-distribucion-pago.dto';
+import { DistribucionPagoFilterDto } from '../../../application/dto/distribucion-pago-filter.dto';
+import { DistribucionPagoResponseDto } from '../../../application/dto/distribucion-pago-response.dto';
+import { CreateDistribucionPagoUseCase } from '../../../application/use-cases/create-distribucion-pago.use-case';
+import { ListDistribucionesPagoUseCase } from '../../../application/use-cases/list-distribuciones-pago.use-case';
+import { GetDistribucionPagoUseCase } from '../../../application/use-cases/get-distribucion-pago.use-case';
+import { UpdateDistribucionPagoUseCase } from '../../../application/use-cases/update-distribucion-pago.use-case';
+import { DeleteDistribucionPagoUseCase } from '../../../application/use-cases/delete-distribucion-pago.use-case';
+
+@ApiTags('Owner Settlements - Distribución de Pagos')
+@Controller('distribuciones-pago')
+@UseGuards(RolesGuard)
+export class DistribucionPagoController {
+  constructor(
+    private readonly createDistribucionPagoUseCase: CreateDistribucionPagoUseCase,
+    private readonly listDistribucionesPagoUseCase: ListDistribucionesPagoUseCase,
+    private readonly getDistribucionPagoUseCase: GetDistribucionPagoUseCase,
+    private readonly updateDistribucionPagoUseCase: UpdateDistribucionPagoUseCase,
+    private readonly deleteDistribucionPagoUseCase: DeleteDistribucionPagoUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Liquidar y distribuir pago a propietario (RBAC: ADMIN, CARTERA)' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: DistribucionPagoResponseDto })
+  create(@Body() dto: CreateDistribucionPagoDto) {
+    return this.createDistribucionPagoUseCase.execute(dto);
+  }
+
+  @Get()
+  @Roles(Role.ADMIN, Role.CARTERA, Role.PROPIETARIO_CONSULTA)
+  @ApiOperation({ summary: 'Listar distribuciones de pago' })
+  @ApiOkResponse({ type: [DistribucionPagoResponseDto] })
+  findAll(@Query() filter: DistribucionPagoFilterDto) {
+    return this.listDistribucionesPagoUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN, Role.CARTERA, Role.PROPIETARIO_CONSULTA)
+  @ApiOperation({ summary: 'Consultar detalle de una liquidación por ID' })
+  @ApiOkResponse({ type: DistribucionPagoResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getDistribucionPagoUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.CARTERA)
+  @ApiOperation({ summary: 'Actualizar estado de distribución' })
+  @ApiOkResponse({ type: DistribucionPagoResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateDistribucionPagoDto,
+  ) {
+    return this.updateDistribucionPagoUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un registro de distribución' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteDistribucionPagoUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2665746214.png)
+
+### 11.3 — Verificar tabla física `distribuciones_pago` y API
+
+Arranca la aplicación y verifica la sincronización física de la tabla y Swagger.
+
+``` bash
+npm run start:dev
+```
+
+------------------------------------------------------------------------
+
+## FASE 12 — `11_BUSINESS_MAINTENANCE` (Mantenimiento e Incidencias)
+
+### Business — Maintenance / Gestión de Mantenimiento y Proveedores (CA & DDD)
+
+> **Objetivo de la fase:** Administra el flujo de incidencias, cotizaciones y órdenes de trabajo locativo en los inmuebles.
+>
+> **Flujo Operativo:** 1. Reporte del daño → `TicketMantenimiento` (estado `ABIERTO`, costo inicial estimado). 2. Asignación a técnico certificado → `Proveedor` (plomería, electricidad, cerrajería, pintura). 3. Generación de orden de trabajo → `OrdenMantenimiento` (aprobación formal de presupuesto, control de `costo_estimado` vs `costo_final` y cierre con evidencia documental).
+>
+> **Seguridad RBAC:** Operaciones operativas protegidas con `@Roles(Role.ADMIN, Role.MANTENIMIENTO, Role.ASESOR)`.
+
+### 12.1 — features/business/maintenance/infrastructure/persistence/models/ticket-mantenimiento.model.ts
+
+Modelo Sequelize para la tabla `tickets_mantenimiento` vinculado al inmueble afectado.
+
+**Archivo:** `src/features/business/maintenance/infrastructure/persistence/models/ticket-mantenimiento.model.ts`
+
+``` bash
+mkdir -p src/features/business/maintenance/infrastructure/persistence/models
+cat > src/features/business/maintenance/infrastructure/persistence/models/ticket-mantenimiento.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { InmuebleModel } from '../../properties/infrastructure/persistence/models/inmueble.model';
+import { OrdenMantenimientoModel } from './orden-mantenimiento.model';
+
+@Table({ tableName: 'tickets_mantenimiento', timestamps: true })
+export class TicketMantenimientoModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => InmuebleModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'inmueble_id',
+  })
+  declare inmuebleId: number;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: false,
+  })
+  declare fecha: Date;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+  })
+  declare costo: number;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'ABIERTO',
+  })
+  declare estado: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: false,
+  })
+  declare descripcion: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => InmuebleModel)
+  declare inmueble: InmuebleModel;
+
+  @HasMany(() => OrdenMantenimientoModel, 'ticketId')
+  declare ordenes: OrdenMantenimientoModel[];
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2350318651.png)
+
+### 12.2 — features/business/maintenance/infrastructure/persistence/models/proveedor.model.ts
+
+Modelo Sequelize para el directorio de contratistas y proveedores técnicos calificados.
+
+**Archivo:** `src/features/business/maintenance/infrastructure/persistence/models/proveedor.model.ts`
+
+``` bash
+mkdir -p src/features/business/maintenance/infrastructure/persistence/models
+cat > src/features/business/maintenance/infrastructure/persistence/models/proveedor.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  Column,
+  CreatedAt,
+  DataType,
+  HasMany,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { OrdenMantenimientoModel } from './orden-mantenimiento.model';
+
+@Table({ tableName: 'proveedores', timestamps: true })
+export class ProveedorModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @Column({
+    type: DataType.STRING(150),
+    allowNull: false,
+  })
+  declare nombre: string;
+
+  @Column({
+    type: DataType.STRING(50),
+    allowNull: true,
+  })
+  declare telefono: string;
+
+  @Column({
+    type: DataType.STRING(150),
+    allowNull: true,
+  })
+  declare email: string;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    field: 'is_active',
+  })
+  declare isActive: boolean;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @HasMany(() => OrdenMantenimientoModel, 'proveedorId')
+  declare ordenes: OrdenMantenimientoModel[];
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2218098521.png)
+
+### 12.3 — features/business/maintenance/infrastructure/persistence/models/orden-mantenimiento.model.ts
+
+Modelo Sequelize para la tabla `ordenes_mantenimiento` con fecha de aprobación, costo estimado vs final y evidencias de cierre.
+
+**Archivo:** `src/features/business/maintenance/infrastructure/persistence/models/orden-mantenimiento.model.ts`
+
+``` bash
+mkdir -p src/features/business/maintenance/infrastructure/persistence/models
+cat > src/features/business/maintenance/infrastructure/persistence/models/orden-mantenimiento.model.ts <<'EOF_BACKEND_IA'
+import {
+  AutoIncrement,
+  BelongsTo,
+  Column,
+  CreatedAt,
+  DataType,
+  ForeignKey,
+  Model,
+  PrimaryKey,
+  Table,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { TicketMantenimientoModel } from './ticket-mantenimiento.model';
+import { ProveedorModel } from './proveedor.model';
+
+@Table({ tableName: 'ordenes_mantenimiento', timestamps: true })
+export class OrdenMantenimientoModel extends Model {
+  @PrimaryKey
+  @AutoIncrement
+  @Column(DataType.INTEGER)
+  declare id: number;
+
+  @ForeignKey(() => TicketMantenimientoModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'ticket_id',
+  })
+  declare ticketId: number;
+
+  @ForeignKey(() => ProveedorModel)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'proveedor_id',
+  })
+  declare proveedorId: number;
+
+  @Column({
+    type: DataType.DATEONLY,
+    allowNull: true,
+    field: 'fecha_aprobacion',
+  })
+  declare fechaAprobacion: Date;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    field: 'costo_estimado',
+  })
+  declare costoEstimado: number;
+
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: true,
+    field: 'costo_final',
+  })
+  declare costoFinal: number;
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: 'COTIZADO',
+  })
+  declare estado: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: false,
+  })
+  declare descripcion: string;
+
+  @CreatedAt
+  @Column({ field: 'created_at' })
+  declare createdAt: Date;
+
+  @UpdatedAt
+  @Column({ field: 'updated_at' })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => TicketMantenimientoModel)
+  declare ticket: TicketMantenimientoModel;
+
+  @BelongsTo(() => ProveedorModel)
+  declare proveedor: ProveedorModel;
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-2834356698.png)
+
+### 12.4 — features/business/maintenance/presentation/http/controllers/tickets-mantenimiento.controller.ts
+
+Controlador REST para Tickets de Incidencias protegidos para `ADMIN`, `ASESOR` y `MANTENIMIENTO`.
+
+**Archivo:** `src/features/business/maintenance/presentation/http/controllers/tickets-mantenimiento.controller.ts`
+
+``` bash
+mkdir -p src/features/business/maintenance/presentation/http/controllers
+cat > src/features/business/maintenance/presentation/http/controllers/tickets-mantenimiento.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateTicketDto } from '../../../application/dto/ticket/create-ticket.dto';
+import { UpdateTicketDto } from '../../../application/dto/ticket/update-ticket.dto';
+import { TicketFilterDto } from '../../../application/dto/ticket/ticket-filter.dto';
+import { TicketResponseDto } from '../../../application/dto/ticket/ticket-response.dto';
+import { CreateTicketUseCase } from '../../../application/use-cases/ticket/create-ticket.use-case';
+import { ListTicketsUseCase } from '../../../application/use-cases/ticket/list-tickets.use-case';
+import { GetTicketUseCase } from '../../../application/use-cases/ticket/get-ticket.use-case';
+import { UpdateTicketUseCase } from '../../../application/use-cases/ticket/update-ticket.use-case';
+import { DeleteTicketUseCase } from '../../../application/use-cases/ticket/delete-ticket.use-case';
+
+@ApiTags('Maintenance - Tickets')
+@Controller('tickets-mantenimiento')
+@UseGuards(RolesGuard)
+export class TicketsMantenimientoController {
+  constructor(
+    private readonly createTicketUseCase: CreateTicketUseCase,
+    private readonly listTicketsUseCase: ListTicketsUseCase,
+    private readonly getTicketUseCase: GetTicketUseCase,
+    private readonly updateTicketUseCase: UpdateTicketUseCase,
+    private readonly deleteTicketUseCase: DeleteTicketUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.ASESOR, Role.MANTENIMIENTO)
+  @ApiOperation({ summary: 'Registrar un ticket de daño o avería en un inmueble' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: TicketResponseDto })
+  create(@Body() dto: CreateTicketDto) {
+    return this.createTicketUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar tickets de mantenimiento' })
+  @ApiOkResponse({ type: [TicketResponseDto] })
+  findAll(@Query() filter: TicketFilterDto) {
+    return this.listTicketsUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Consultar un ticket por ID' })
+  @ApiOkResponse({ type: TicketResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getTicketUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.MANTENIMIENTO)
+  @ApiOperation({ summary: 'Actualizar estado o costo de un ticket' })
+  @ApiOkResponse({ type: TicketResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateTicketDto,
+  ) {
+    return this.updateTicketUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un ticket' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteTicketUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-3473977158.png)
+
+### 12.5 — features/business/maintenance/presentation/http/controllers/ordenes-mantenimiento.controller.ts
+
+Controlador REST para Órdenes de Mantenimiento: aprobación de presupuestos y cierre con evidencias.
+
+**Archivo:** `src/features/business/maintenance/presentation/http/controllers/ordenes-mantenimiento.controller.ts`
+
+``` bash
+mkdir -p src/features/business/maintenance/presentation/http/controllers
+cat > src/features/business/maintenance/presentation/http/controllers/ordenes-mantenimiento.controller.ts <<'EOF_BACKEND_IA'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ParsePositiveIntPipe } from '../../../../../../common/pipes/parse-positive-int.pipe';
+import { Roles } from '../../../../../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../../../../../common/guards/roles.guard';
+import { Role } from '../../../../../../common/enums/role.enum';
+import { CreateOrdenDto } from '../../../application/dto/orden/create-orden.dto';
+import { UpdateOrdenDto } from '../../../application/dto/orden/update-orden.dto';
+import { OrdenFilterDto } from '../../../application/dto/orden/orden-filter.dto';
+import { OrdenResponseDto } from '../../../application/dto/orden/orden-response.dto';
+import { CreateOrdenUseCase } from '../../../application/use-cases/orden/create-orden.use-case';
+import { ListOrdenesUseCase } from '../../../application/use-cases/orden/list-ordenes.use-case';
+import { GetOrdenUseCase } from '../../../application/use-cases/orden/get-orden.use-case';
+import { UpdateOrdenUseCase } from '../../../application/use-cases/orden/update-orden.use-case';
+import { DeleteOrdenUseCase } from '../../../application/use-cases/orden/delete-orden.use-case';
+
+@ApiTags('Maintenance - Órdenes')
+@Controller('ordenes-mantenimiento')
+@UseGuards(RolesGuard)
+export class OrdenesMantenimientoController {
+  constructor(
+    private readonly createOrdenUseCase: CreateOrdenUseCase,
+    private readonly listOrdenesUseCase: ListOrdenesUseCase,
+    private readonly getOrdenUseCase: GetOrdenUseCase,
+    private readonly updateOrdenUseCase: UpdateOrdenUseCase,
+    private readonly deleteOrdenUseCase: DeleteOrdenUseCase,
+  ) {}
+
+  @Post()
+  @Roles(Role.ADMIN, Role.MANTENIMIENTO)
+  @ApiOperation({ summary: 'Generar orden de trabajo a proveedor (RBAC: ADMIN, MANTENIMIENTO)' })
+  @ApiHeader({ name: 'x-user-role', description: 'Rol para validación RBAC', required: false })
+  @ApiCreatedResponse({ type: OrdenResponseDto })
+  create(@Body() dto: CreateOrdenDto) {
+    return this.createOrdenUseCase.execute(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar órdenes de trabajo' })
+  @ApiOkResponse({ type: [OrdenResponseDto] })
+  findAll(@Query() filter: OrdenFilterDto) {
+    return this.listOrdenesUseCase.execute(filter);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener una orden por ID' })
+  @ApiOkResponse({ type: OrdenResponseDto })
+  findOne(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.getOrdenUseCase.execute(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.MANTENIMIENTO)
+  @ApiOperation({ summary: 'Aprobar costos o cerrar orden de trabajo' })
+  @ApiOkResponse({ type: OrdenResponseDto })
+  update(
+    @Param('id', ParsePositiveIntPipe) id: number,
+    @Body() dto: UpdateOrdenDto,
+  ) {
+    return this.updateOrdenUseCase.execute(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar una orden de mantenimiento' })
+  @ApiNoContentResponse()
+  remove(@Param('id', ParsePositiveIntPipe) id: number) {
+    return this.deleteOrdenUseCase.execute(id);
+  }
+}
+EOF_BACKEND_IA
+```
+
+### ![](images/clipboard-3426419873.png)}
+
+### 12.6 — Verificar tablas físicas de mantenimiento y API
+
+Arranca la aplicación y verifica la sincronización de `tickets_mantenimiento`, `proveedores` y `ordenes_mantenimiento`.
+
+``` bash
+npm run start:dev
+```
+
+------------------------------------------------------------------------
+
+## FASE 13 — `12_GLOBAL_INTEGRATION_AND_TESTING` (Integración Sequelize, RBAC y Verificación)
+
+### 13.1 — Registro Centralizado en `sequelize.factory.ts`
+
+Actualización de la fábrica central de Sequelize con los 10 modelos de dominio de Arrenda360.
+
+**Archivo:** `src/infrastructure/database/sequelize/sequelize.factory.ts`
+
+``` bash
+cat > src/infrastructure/database/sequelize/sequelize.factory.ts <<'EOF_BACKEND_IA'
+import { Sequelize } from 'sequelize-typescript';
+import { DatabaseDialect } from '../../../config/environment/env.interface';
+import { getSequelizeOptions } from '../../../config/environment/db-env';
+import { PropietarioModel } from '../../../features/business/properties/infrastructure/persistence/models/propietario.model';
+import { InmuebleModel } from '../../../features/business/properties/infrastructure/persistence/models/inmueble.model';
+import { ArrendatarioModel } from '../../../features/business/leases/infrastructure/persistence/models/arrendatario.model';
+import { ContratoModel } from '../../../features/business/leases/infrastructure/persistence/models/contrato.model';
+import { CobroMensualModel } from '../../../features/business/receivables/infrastructure/persistence/models/cobro-mensual.model';
+import { PagoModel } from '../../../features/business/receivables/infrastructure/persistence/models/pago.model';
+import { DistribucionPagoModel } from '../../../features/business/owner-settlements/infrastructure/persistence/models/distribucion-pago.model';
+import { TicketMantenimientoModel } from '../../../features/business/maintenance/infrastructure/persistence/models/ticket-mantenimiento.model';
+import { ProveedorModel } from '../../../features/business/maintenance/infrastructure/persistence/models/proveedor.model';
+import { OrdenMantenimientoModel } from '../../../features/business/maintenance/infrastructure/persistence/models/orden-mantenimiento.model';
+
 export const ALL_MODELS = [
   PropietarioModel,
   InmuebleModel,
@@ -3451,17 +5133,76 @@ export const ALL_MODELS = [
   ProveedorModel,
   OrdenMantenimientoModel,
 ];
+
+export async function createSequelizeInstance(
+  dialect: DatabaseDialect,
+): Promise<Sequelize> {
+  const options = getSequelizeOptions(dialect);
+
+  let dialectModule: any;
+  switch (dialect) {
+    case DatabaseDialect.MySQL:
+      dialectModule = require('mysql2');
+      break;
+    case DatabaseDialect.Postgres:
+      dialectModule = require('pg');
+      break;
+    case DatabaseDialect.MSSQL:
+      dialectModule = require('tedious');
+      break;
+    case DatabaseDialect.Oracle:
+      dialectModule = require('oracledb');
+      break;
+    default:
+      throw new Error(`Dialecto no soportado: ${dialect}`);
+  }
+
+  const sequelize = new Sequelize({
+    ...options,
+    dialectModule,
+    models: ALL_MODELS,
+  } as any);
+
+  try {
+    await sequelize.authenticate();
+    console.log(`✅ Conexión exitosa a ${dialect.toUpperCase()}`);
+  } catch (error: any) {
+    console.error(`❌ Error conectando a ${dialect.toUpperCase()}:`, error.message);
+    throw error;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    await sequelize.sync({ alter: false });
+    console.log('✅ Tablas sincronizadas');
+  }
+
+  return sequelize;
+}
+EOF_BACKEND_IA
 ```
 
-Al inicializar la aplicación con `DB_DIALECT=mysql` (o postgres, mssql, oracle), Sequelize ejecuta la sincronización de las 10 tablas físicas y sus respectivas llaves foráneas (`propietario_id`, `inmueble_id`, `arrendatario_id`, `contrato_id`, `cobro_id`, `pago_id`, `ticket_id`, `proveedor_id`).
+![](images/clipboard-3744903328.png)
 
-------------------------------------------------------------------------
+### 13.2 — Integración en `src/app.module.ts`
 
-### 8.10 — Estructura Final del Módulo Raíz (`src/app.module.ts`)
+El módulo raíz importa los 5 bounded contexts de negocio:
 
-`AppModule` unifica la configuración transversal, el motor de base de datos y los 5 módulos de negocio de Arrenda360:
+``` bash
+cat > src/app.module.ts <<'EOF_BACKEND_IA'
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { envConfig } from './config/environment/env.config';
+import { appConfig } from './config/app/app.config';
+import { LoggerModule } from './config/logger/logger.module';
+import { SequelizeDatabaseModule } from './infrastructure/database/sequelize/sequelize.module';
+import { PropertiesModule } from './features/business/properties/properties.module';
+import { LeasesModule } from './features/business/leases/leases.module';
+import { ReceivablesModule } from './features/business/receivables/receivables.module';
+import { OwnerSettlementsModule } from './features/business/owner-settlements/owner-settlements.module';
+import { MaintenanceModule } from './features/business/maintenance/maintenance.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
-``` typescript
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -3481,30 +5222,20 @@ Al inicializar la aplicación con `DB_DIALECT=mysql` (o postgres, mssql, oracle)
   providers: [AppService],
 })
 export class AppModule {}
+EOF_BACKEND_IA
 ```
 
-------------------------------------------------------------------------
+### ![](images/clipboard-1526522947.png)
 
-### 8.11 — Verificación y Pruebas Automatizadas
+### 13.3 — Suite de Pruebas Unitarias y Automatizadas
 
-#### 1. Verificación de Compilación TypeScript
-
-``` bash
-npm run build
-```
-
-``` text
-> backend@0.0.1 build
-> nest build
-
-✅ Compilación exitosa sin errores de tipado ni dependencias rotas.
-```
-
-#### 2. Ejecución de la Suite de Pruebas Unitarias
+Ejecución de la suite con Vitest:
 
 ``` bash
 npm run test
 ```
+
+![](images/clipboard-396662391.png)
 
 ``` text
  RUN  v4.1.11 /home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend
@@ -3519,13 +5250,26 @@ npm run test
 ✅ 6 pruebas unitarias ejecutadas y aprobadas (cobertura de controladores base y guardias RBAC).
 ```
 
-#### 3. Puesta en Marcha y Documentación Swagger
+### 13.4 — Verificación de Compilación TypeScript
+
+``` bash
+npm run build
+```
+
+``` text
+> backend@0.0.1 build
+> nest build
+
+✅ Compilación exitosa con código de salida 0 (cero errores de compilación).
+```
+
+### 13.5 — Puesta en Marcha y Verificación en Swagger
 
 ``` bash
 npm run start:dev
 ```
 
-- **URL Base:** `http://localhost:3002/api`
-- **Documentación OpenAPI / Swagger:** `http://localhost:3002/api/docs`
+- **Ruta de la API:** `http://localhost:3002/api`
+- **Documentación OpenAPI Swagger:** `http://localhost:3002/api/docs`
 
-La consola confirma la sincronización exitosa de las 10 tablas físicas de Arrenda360 y la exposición interactiva de todos los controladores protegidos con RBAC.
+La consola confirma la sincronización de las 10 tablas físicas en la base de datos `Arrendo360` y la exposición interactiva de todos los módulos con soporte para validación por header `x-user-role`.

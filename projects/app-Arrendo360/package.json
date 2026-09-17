@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend run start",
+    "start:dev": "npm --prefix backend run start:dev",
+    "test": "npm --prefix backend run test",
+    "lint": "npm --prefix backend run lint"
   },
   "keywords": [],
   "author": "",
