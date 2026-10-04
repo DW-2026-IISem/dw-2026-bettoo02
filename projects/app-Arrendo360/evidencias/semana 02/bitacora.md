@@ -215,7 +215,7 @@ mkdir -p src/features/business/{properties,leases,receivables,owner-settlements,
 ### 3.2 — Matriz de responsabilidades y capas arquitectónicas
 
 | Carpeta | Responsabilidad |
-|----------------------|--------------------------------------------------|
+|----|----|
 | `config/` | Cómo se configura la app (env, jwt, swagger) |
 | `common/` | Piezas transversales reutilizables |
 | `infrastructure/` | Detalles técnicos (Sequelize, bcrypt, JWT) |
