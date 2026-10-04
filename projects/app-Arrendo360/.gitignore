@@ -1,0 +1,13 @@
+# compiled output
+dist/
+node_modules/
+backend/dist/
+backend/node_modules/
+
+# environment variables
+.env
+.env.local
+backend/.env
+
+# build files
+*.tsbuildinfo
