@@ -5,7 +5,7 @@
 **Naturaleza:** práctico (desarrollo de software backend)  
 **Issue GitHub:** `dw-2026-bettoo02 #2`  
 **Responsable (desarrollador):** Alberto José Ortiz Ortiz (@bettoo02)  
-**Revisor humano:** Docente / Revisor Técnico  
+**Revisor humano:** Ing. Alberto José Ortiz Ortiz  
 **Dependencias:** ISS-01 en **Hecho**  
 **Commit esperado:** `feat(iss-02): entorno Sequelize y common` con `Refs #2`
 
@@ -62,7 +62,7 @@
 
 | Fecha | Revisor | Actuación | AC revisados | Evidencia consultada | Hallazgo | Decisión |
 |-------|---------|-----------|--------------|----------------------|----------|----------|
-| 2026-10-04 | Revisor Técnico / Docente | Revisión de criterios de aceptación | OBJ, SPEC, REQ, AC (AC-1 a AC-4) | Archivo ISS-02.md, código de configuración de entorno y fábrica Sequelize | Criterios bien definidos, con fail-fast medible, envelope de respuesta unificado y protección estricta contra force: true | AC aprobados — puede En curso |
+| 2026-10-04 | Ing. Alberto José Ortiz Ortiz | Revisión de criterios de aceptación | OBJ, SPEC, REQ, AC (AC-1 a AC-4) | Archivo ISS-02.md, código de configuración de entorno y fábrica Sequelize | Criterios bien definidos, con fail-fast medible, envelope de respuesta unificado y protección estricta contra force: true | AC aprobados — puede En curso |
 
 Decisión posible: `AC aprobados — puede En curso` · `Ajustar AC` (indicar cuál y por qué).
 
@@ -153,7 +153,7 @@ Preguntas guía del revisor: «Abrir el factory y mostrar dónde se elige el dia
 
 | Fecha | Revisor | Actuación (aporte · revisión conforme · devolución) | AC revisados | Evidencia consultada | Hallazgo | Decisión |
 |-------|---------|-----------------------------------------------------|--------------|----------------------|----------|----------|
-| 2026-10-04 | Revisor Técnico | Revisión de configuración multi-base y common | AC-1, AC-2, AC-3, AC-4 | Código de validación de entorno, factoría Sequelize, pruebas y logs | Configuración robusta. Fail-fast previene fallos opacos de red. Filtro de excepciones e interceptores de respuesta unifican el contrato REST de Arrendo360. | Conforme |
+| 2026-10-04 | Ing. Alberto José Ortiz Ortiz | Revisión de configuración multi-base y common | AC-1, AC-2, AC-3, AC-4 | Código de validación de entorno, factoría Sequelize, pruebas y logs | Configuración robusta. Fail-fast previene fallos opacos de red. Filtro de excepciones e interceptores de respuesta unifican el contrato REST de Arrendo360. | Conforme |
 
 **Respuesta del autor (ajuste o justificación):**
 - En `src/infrastructure/database/sequelize/sequelize.factory.ts`, el `switch (dialect)` selecciona dinámicamente el módulo correspondiente (`mysql2`, `pg`, `tedious`, `oracledb`) e invoca `sequelize.sync({ alter: false })` en la línea 61, impidiendo cualquier modificación destructiva del esquema de base de datos existente.

@@ -5,7 +5,7 @@
 **Naturaleza:** práctico (desarrollo de software backend)  
 **Issue GitHub:** `dw-2026-bettoo02 #3`  
 **Responsable (desarrollador):** Alberto José Ortiz Ortiz (@bettoo02)  
-**Revisor humano:** Docente / Revisor Técnico  
+**Revisor humano:** Ing. Alberto José Ortiz Ortiz  
 **Dependencias:** ISS-02 en **Hecho**  
 **Commit esperado:** `feat(iss-03): feature properties CA` con `Refs #3`
 
@@ -65,7 +65,7 @@
 
 | Fecha | Revisor | Actuación | AC revisados | Evidencia consultada | Hallazgo | Decisión |
 |-------|---------|-----------|--------------|----------------------|----------|----------|
-| 2026-10-04 | Revisor Técnico / Docente | Revisión de criterios de aceptación | OBJ, SPEC, REQ, AC (AC-1 a AC-6) | Archivo ISS-03.md y estructura modular de Properties | Criterios exhaustivos, con validación de entidades puras, inversión de dependencias y pruebas de ciclo de vida HTTP | AC aprobados — puede En curso |
+| 2026-10-04 | Ing. Alberto José Ortiz Ortiz | Revisión de criterios de aceptación | OBJ, SPEC, REQ, AC (AC-1 a AC-6) | Archivo ISS-03.md y estructura modular de Properties | Criterios exhaustivos, con validación de entidades puras, inversión de dependencias y pruebas de ciclo de vida HTTP | AC aprobados — puede En curso |
 
 Decisión posible: `AC aprobados — puede En curso` · `Ajustar AC` (indicar cuál y por qué).
 
@@ -158,7 +158,7 @@ Preguntas guía del revisor: «Señalar y explicar entidad, interfaz, modelo Seq
 
 | Fecha | Revisor | Actuación (aporte · revisión conforme · devolución) | AC revisados | Evidencia consultada | Hallazgo | Decisión |
 |-------|---------|-----------------------------------------------------|--------------|----------------------|----------|----------|
-| 2026-10-04 | Revisor Técnico | Revisión de arquitectura limpia y desacoplamiento en Properties | AC-1 a AC-6 | Código de dominio, casos de uso, repositorios y controladores | El módulo implementa fielmente Clean Architecture y DIP. Las reglas de negocio permanecen desacopladas del ORM. Criterios aprobados. | Conforme |
+| 2026-10-04 | Ing. Alberto José Ortiz Ortiz | Revisión de arquitectura limpia y desacoplamiento en Properties | AC-1 a AC-6 | Código de dominio, casos de uso, repositorios y controladores | El módulo implementa fielmente Clean Architecture y DIP. Las reglas de negocio permanecen desacopladas del ORM. Criterios aprobados. | Conforme |
 
 **Respuesta del autor (ajuste o justificación):**
 - **Principio de Inversión de Dependencias (DIP):** El caso de uso `CreatePropietarioUseCase` inyecta la abstracción (`IPropietarioRepository`) mediante el token `PROPIETARIO_REPOSITORY` en lugar de la clase concreta `PropietarioRepository` de Sequelize. Esto garantiza que la lógica de aplicación dependa de un contrato y no de detalles técnicos de infraestructura, facilitando pruebas unitarias mediante mocks y permitiendo cambiar el mecanismo de persistencia sin alterar el núcleo de negocio.

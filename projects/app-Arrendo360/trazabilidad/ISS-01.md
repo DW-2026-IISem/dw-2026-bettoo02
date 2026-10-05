@@ -1,11 +1,11 @@
-> **Workspace:** `backend-nest-ia` · **Pista:** solo Business (7 issues) · **Guion:** `docs/Guion_IA_Desarrollo_Software.md` · **Metodología:** `docs/Metodologia_Desarrollo_Software_SDD_Kanban.md` · **Arquitectura:** `docs/Prompt.md`
+> **Workspace:** `app-Arrendo360` (repo `dw-2026-bettoo02`) · **Proyecto:** `Arrendo360` · **Pista:** solo Business (7 issues) · **Guion:** `docs/Guion_IA_Desarrollo_Software.md` · **Metodología:** `docs/Metodologia_Desarrollo_Software_SDD_Kanban.md` · **Arquitectura:** `docs/Prompt.md`
 
 # ISS-01 — Esqueleto NestJS CA arrancable
 
 **Naturaleza:** práctico (desarrollo de software backend)  
-**Issue GitHub:** `backend-nest-ia #1`  
-**Responsable (desarrollador):** Betto  
-**Revisor humano:** Docente / Revisor Técnico  
+**Issue GitHub:** `dw-2026-bettoo02 #1`  
+**Responsable (desarrollador):** Alberto José Ortiz Ortiz (@bettoo02)  
+**Revisor humano:** Ing. Alberto José Ortiz Ortiz  
 **Dependencias:** ninguna (primer issue del proyecto)  
 **Commit esperado:** `feat(iss-01): esqueleto NestJS CA arrancable` con `Refs #1`
 
@@ -146,7 +146,7 @@ Preguntas guía del revisor: «Señala en el árbol qué va en `config`, qué en
 
 | Fecha | Revisor | Actuación (aporte · revisión conforme · devolución) | AC revisados | Evidencia consultada | Hallazgo | Decisión |
 |-------|---------|-----------------------------------------------------|--------------|----------------------|----------|----------|
-| 2026-10-04 | Revisor Técnico | Revisión técnica de implementación y Clean Architecture | AC-1, AC-2, AC-3, AC-4 | Logs de ejecución, respuesta HTTP de healthcheck y estructura del código | Implementación conforme a la especificación. Prefijo global y ValidationPipe configurados centralizadamente en `main.ts`. Endpoint de salud operativo sin BD. | Conforme |
+| 2026-10-04 | Ing. Alberto José Ortiz Ortiz | Revisión técnica de implementación y Clean Architecture | AC-1, AC-2, AC-3, AC-4 | Logs de ejecución, respuesta HTTP de healthcheck y estructura del código | Implementación conforme a la especificación. Prefijo global y ValidationPipe configurados centralizadamente en `main.ts`. Endpoint de salud operativo sin BD. | Conforme |
 
 **Respuesta del autor (ajuste o justificación):**
 - En `config/` se ubican las configuraciones de entorno, variables globales y configuración de Swagger/Logger.
