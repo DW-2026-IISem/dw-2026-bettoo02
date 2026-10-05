@@ -17,7 +17,7 @@ Se implementó y verificó de forma exhaustiva el flujo de **Registro de Usuario
 ## 2. Especificación de Endpoints
 
 | Método | Endpoint | Descripción | Códigos HTTP Soportados |
-|:-----------------|:-----------------|:-----------------|:-----------------|
+|:---|:---|:---|:---|
 | `POST` | `/api/auth/register` | Registro de usuario con credenciales y perfil | `201 Created`, `400 Bad Request`, `409 Conflict` |
 | `POST` | `/api/auth/registro` | Alias en español para registro | `201 Created`, `400 Bad Request`, `409 Conflict` |
 | `POST` | `/api/auth/login` | Autenticación de usuario existente | `200 OK`, `400 Bad Request`, `401 Unauthorized` |
