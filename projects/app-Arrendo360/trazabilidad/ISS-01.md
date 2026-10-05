@@ -4,7 +4,7 @@
 
 **Naturaleza:** práctico (desarrollo de software backend)  
 **Issue GitHub:** `backend-nest-ia #1`  
-**Responsable (desarrollador):** Alberto Jose Ortiz Ortiz  
+**Responsable (desarrollador):** Betto  
 **Revisor humano:** Docente / Revisor Técnico  
 **Dependencias:** ninguna (primer issue del proyecto)  
 **Commit esperado:** `feat(iss-01): esqueleto NestJS CA arrancable` con `Refs #1`
