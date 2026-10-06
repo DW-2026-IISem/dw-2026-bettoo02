@@ -36,13 +36,13 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 
 | 1\. Preparado | 2\. En curso <br>**(WIP = 1)** | 3\. Verificación <br>*(Pruebas & EVI)* | 4\. Revisión Humana <br>*(Quality Gate)* | 5\. Hecho <br>*(Commit & Gate OK)* |
 |:--------------|:-------------:|:-------------:|:-------------:|:--------------|
-| *(Vacío)* | *(0/1 - Disponible)* | *(0 tarjetas)* | 🔹 **ISS-08 / SEC-AUTH**<br>Seguridad, Anti-Enumeración, RTR Reúso, Fuerza Bruta y Evidencias Sem. 3 | ✅ **ISS-01:** Esqueleto NestJS CA arrancable<br>✅ **ISS-02:** Persistencia Sequelize y Modelos Base<br>✅ **ISS-03:** Configuración y Health Checks<br>✅ **ISS-04:** Bounded Context Inmuebles & Propietarios<br>✅ **ISS-05:** Bounded Context Contratos Arrendamiento<br>✅ **ISS-06:** Bounded Context Cobros y Recaudos<br>✅ **ISS-07:** Bounded Context Liquidaciones y Demo E2E |
+| *(Vacío)* | *(0/1 - Disponible)* | *(0 tarjetas)* | 🔹 **ISS-11 / BIZ-PRODUCTS**<br>Products (Productos/Inmuebles), Relación ProductType, RN-PROD-01..06, Seeder Parametrizable, Endpoints Lógicos y Suites .http | ✅ **ISS-01 a ISS-07:** Bounded Contexts y Demo E2E<br>✅ **ISS-08 / SEC-AUTH:** Seguridad, Anti-Enumeración, RTR<br>✅ **ISS-09 / BIZ-CLIENTS:** Ciclo de Vida Clients, Reglas y Seeder<br>✅ **ISS-10 / BIZ-PRODUCT-TYPES:** Tipos de Producto, Seeder y Reglas |
 
 ------------------------------------------------------------------------
 
 ## 3. Detalle de Tarjetas e Issues
 
-### Tarjetas en Estado "Hecho" (7/7 Pista Business Completada)
+### Tarjetas en Estado "Hecho"
 
 | ID Issue | Título / Alcance | Trazabilidad | Criterios AC | Commit Asociado |
 |:--------------|:--------------|:-------------:|:-------------:|:--------------|
@@ -53,30 +53,41 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 | **ISS-05** | Contratos de Arrendamiento y Estados de Ocupación | [`trazabilidad/ISS-05.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-05.md) | AC-1 a AC-5 aprobados | `feat(iss-05): contratos de arrendamiento Refs #5` |
 | **ISS-06** | Cobros Mensuales, Pagos y Transiciones de Estado | [`trazabilidad/ISS-06.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-06.md) | AC-1 a AC-5 aprobados | `feat(iss-06): cobros mensuales y pagos Refs #6` |
 | **ISS-07** | Liquidaciones a Propietarios, Seeders y Demo E2E | [`trazabilidad/ISS-07.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-07.md) | AC-1 a AC-5 aprobados | `feat(iss-07): integracion business y demo Refs #7` |
+| **ISS-08** | Seguridad, Anti-Enumeración, RTR, Token Blacklist y Recuperación | [`docs/seguridad.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/docs/seguridad.md) | AC-1 a AC-6 aprobados | `feat(iss-08): seguridad auth, rtr y recuperacion Refs #8` |
+| **ISS-09** | Ciclo de Vida Clients, Reglas de Negocio, Seeder Parametrizable | [`evidencias/semana 03/verificacion-clients.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/evidencias/semana%2003/verificacion-clients.md) | AC-1 a AC-7 aprobados | `feat(iss-09): feature clients y seeder Refs #9` |
+| **ISS-10** | Feature ProductTypes, Reglas de Negocio y Seeder Parametrizable | [`evidencias/semana 03/verificacion-product-types.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/evidencias/semana%2003/verificacion-product-types.md) | AC-1 a AC-8 aprobados | `feat(iss-10): feature product-types, reglas de negocio y seeder Refs #10` |
 
 ------------------------------------------------------------------------
 
-### Tarjeta Actual: Semana 03 — Seguridad y Autenticación Integral
+### Tarjeta Actual: Feature Products (Productos / Inmuebles)
 
-#### **ISS-08 / SEC-AUTH: Módulo de Autenticación, Mitigación de Amenazas y Evidencias**
+#### **ISS-11 / BIZ-PRODUCTS: Feature Products, Relación ProductType, Reglas de Negocio, Seeder Parametrizable y Endpoints REST**
 
 - **Estado Actual:** `Revisión Humana (Quality Gate)`
 - **WIP:** Liberó la columna *En curso* (WIP actual en desarrollo = 0/1, disponible para nuevo issue).
 - **Alcance / Entregables:**
-  1.  **Registro y Login:** Autenticación con bcrypt (salt 10) y mitigación de enumeración de usuarios (`HTTP 401: "Credenciales inválidas"` genérico).
-  2.  **Refresh Token Rotation (RTR — RFC 6819):** Detección activa de reúso con revocación total de familia de tokens (`familyId`).
-  3.  **Control de Perfil y Logout:** Endpoint `/auth/me` con validación de Bearer Token y lista negra en memoria con TTL (`TokenBlacklistService`).
-  4.  **Recuperación de Contraseña (Forgot/Reset):** Tokens de un solo uso (`is_used = true`) con caducidad a 15 minutos y 256 bits de entropía CSPRNG.
-  5.  **Interfaz Web SaaS Arrendo360:** Consola de validación directa sin escenarios preconfigurados, evaluando datos ingresados en tiempo real.
-  6.  **Documentación Formal:** [`docs/sdd.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/docs/sdd.md), [`docs/seguridad.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/docs/seguridad.md) y [`docs/kanban.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/docs/kanban.md).
-  7.  **Evidencias Semanales:** 5 documentos formales en `evidencias/semana 03/`.
+  1.  **Modelo y Dominio de Products:** Entidad `Product` y modelo Sequelize `products` con `id`, `name`, `brand`, `price`, `min_stock`, `quantity`, `product_type_id`, `status` (`'active'` | `'inactive'`) y timestamps.
+  2.  **Relación Bireccional:** Asociación `Product.belongsTo(ProductType, { foreignKey: 'product_type_id', as: 'product_type' })` y `ProductType.hasMany(Product, { foreignKey: 'product_type_id', as: 'products' })`.
+  3.  **Reglas de Negocio Estrictas (RN-PROD-01 a RN-PROD-06):**
+      - **RN-PROD-01 (Validación de Tipo de Producto Activo):** Al crear (`POST`) o actualizar (`PUT` / `PATCH` con `product_type_id`), verificar que el tipo de producto exista (HTTP 404 si no existe) y esté activo (`status === 'active'`; HTTP 400 "Product type must be active" si está inactivo).
+      - **RN-PROD-02 (Normalización y Sanitización):** Aplicar `trim()` a nombre y marca (`name`, `brand`).
+      - **RN-PROD-03 (Validación Numérica):** `price > 0`, `min_stock >= 0`, `quantity >= 0`.
+      - **RN-PROD-04 (Actualización Completa y Parcial):** Soporte de `PUT` (reemplazo completo) y `PATCH` (actualización selectiva con revalidación de tipo si cambia).
+      - **RN-PROD-05 (Ciclo de Vida Lógico):** `PATCH /api/productos/:id/deactivate` y `PATCH /api/productos/:id/activate`.
+      - **RN-PROD-06 (Baja Permanente):** `DELETE /api/productos/:id` (HTTP 204).
+  4.  **Enrutamiento Multilingüe:** `@Controller(['productos', 'products'])` para atender peticiones en `/api/productos` y `/api/products`.
+  5.  **Seeder Parametrizable e Idempotente:** `seedProducts(count)` con catálogo inicial `INITIAL_PRODUCTS` (10 ítems), asignando `product_type_id` de tipos activos. Soporte CLI `--products=N` y `SEED_PRODUCTS=N`.
+  6.  **Colección Interactiva (.http):** Archivos `products.get.http`, `products.create.http`, `products.update.http`, `products.delete.http` en `http/products/`.
+  7.  **Suite Automatizada Vitest:** 24 pruebas de Products y 88/88 pruebas globales al 100% PASS (`npm test`).
 - **Criterios de Aceptación (AC) Cumplidos:**
-  - [x] **AC-1:** Registro y login con validaciones de unicidad y códigos 401 unificados.
-  - [x] **AC-2:** Rotación RTR con detección de replay y revocación de familia completa.
-  - [x] **AC-3:** Logout instantáneo invalidando tokens en `/auth/me`.
-  - [x] **AC-4:** Recuperación con token de un solo uso y rechazo HTTP 400 ante reintentos.
-  - [x] **AC-5:** 100% de la suite de pruebas automatizadas aprobada (24/24 tests en Vitest).
-  - [x] **AC-6:** Documentación de amenazas (Enumeración, Reúso, Fuerza Bruta) en SDD y Guía de Seguridad.
+  - [x] **AC-1:** Modelo `ProductModel` en tabla `products` con clave foránea `product_type_id`.
+  - [x] **AC-2:** Asociación bidireccional ProductType ↔ Product (`belongsTo` / `hasMany`).
+  - [x] **AC-3:** Validación estricta de tipo activo (HTTP 400 si está inactivo, HTTP 404 si no existe).
+  - [x] **AC-4:** Sanitización con `trim()` y validaciones de rango numérico (`price > 0`, `min_stock >= 0`, `quantity >= 0`).
+  - [x] **AC-5:** Operaciones de actualización completa (PUT) y granular (PATCH).
+  - [x] **AC-6:** Ciclo de vida con desactivación/activación lógica y eliminación física (HTTP 204).
+  - [x] **AC-7:** Seeder idempotente parametrizable por CLI (`--products=N`) y variables de entorno.
+  - [x] **AC-8:** 100% de la suite de pruebas automatizadas aprobada (24/24 tests para Products, 88/88 total) y compilación limpia con `npm run build`.
 
 ------------------------------------------------------------------------
 
@@ -88,6 +99,18 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 | 2026-10-05 06:00 | **ISS-08 (Auth)** | *Preparado* → *En curso* | Criterios de aceptación revisados para el módulo de Autenticación (WIP = 1/1). |
 | 2026-10-05 08:30 | **ISS-08 (Auth)** | *En curso* → *Verificación* | Implementados use cases, DTOs, entidades y vista web interactiva. Pruebas iniciadas. |
 | 2026-10-05 12:15 | **ISS-08 (Auth)** | *Verificación* → *Revisión Humana* | Ejecutadas las 24 pruebas de Vitest (100% PASS), generadas las 5 evidencias en markdown y redactados `docs/sdd.md` y `docs/seguridad.md`. Columna *En curso* queda en 0/1. |
+| 2026-10-05 13:00 | **ISS-08 (Auth)** | *Revisión Humana* → *Hecho* | Quality Gate aprobado por el revisor humano. |
+| 2026-10-05 14:00 | **ISS-09 (Clients)** | *Preparado* → *En curso* | Inicio de especificación y blindaje de reglas de negocio para Clients (WIP = 1/1). |
+| 2026-10-05 17:30 | **ISS-09 (Clients)** | *En curso* → *Verificación* | Implementación de use cases, seeder idempotente y suite de pruebas. |
+| 2026-10-06 08:15 | **ISS-09 (Clients)** | *Verificación* → *Revisión Humana* | Acoplamiento de ventajas técnicas de Express 5, 45 pruebas al 100% PASS, seeder parametrizable y evidencia completada. |
+| 2026-10-06 08:20 | **ISS-09 (Clients)** | *Revisión Humana* → *Hecho* | Gate aprobado con suite de pruebas y runner CLI operativo. |
+| 2026-10-06 08:25 | **ISS-10 (ProductTypes)** | *Preparado* → *En curso* | Especificación y diseño de ProductTypes (tipologías de inmuebles/productos) bajo Clean Architecture (WIP = 1/1). |
+| 2026-10-06 08:40 | **ISS-10 (ProductTypes)** | *En curso* → *Verificación* | Implementación de entidad, use cases, seeder idempotente y suite de pruebas. |
+| 2026-10-06 08:45 | **ISS-10 (ProductTypes)** | *Verificación* → *Revisión Humana* | 64/64 pruebas al 100% PASS en Vitest, runner CLI verificado y evidencia `verificacion-product-types.md` generada. |
+| 2026-10-06 08:50 | **ISS-10 (ProductTypes)** | *Revisión Humana* → *Hecho* | Quality Gate formalmente aprobado por el usuario. Suite de 64 pruebas íntegras y compilación limpia. |
+| 2026-10-06 08:52 | **ISS-11 (Products)** | *Preparado* → *En curso* | Inicio de especificación, relación ProductType ↔ Product, reglas de negocio y seeder parametrizable (WIP = 1/1). |
+| 2026-10-06 09:15 | **ISS-11 (Products)** | *En curso* → *Verificación* | Implementados use cases, modelo, entidad, relación ProductType, DTOs y suite de 24 pruebas en Vitest. |
+| 2026-10-06 09:20 | **ISS-11 (Products)** | *Verificación* → *Revisión Humana* | 88/88 pruebas aprobadas al 100% en Vitest, compilación limpia con `npm run build` y evidencia `verificacion-products.md` completada. Columna *En curso* queda en 0/1. |
 
 ------------------------------------------------------------------------
 

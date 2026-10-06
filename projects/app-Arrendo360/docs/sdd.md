@@ -261,3 +261,29 @@ Conforme a la metodología **Spec-Driven Development (SDD) & Kanban** definida e
     - La columna **`En curso`** mantiene una restricción inviolable de **WIP = 1**.
     - Ninguna nueva característica arquitectónica puede iniciarse mientras la tarjeta activa no haya alcanzado el estado de *Verificación* o *Hecho*.
     - El subsistema de seguridad actual (**ISS-08 / SEC-AUTH**) ha completado su fase de desarrollo y verificación de 24 pruebas unitarias/integración, liberando la columna *En curso* para su evaluación en *Revisión Humana (Quality Gate)*.
+
+------------------------------------------------------------------------
+
+## 8. Decisiones Arquitectónicas del Bounded Context Clients y Acoplamiento de Ventajas (ISS-09)
+
+En el marco de la evolución técnica del backend NestJS 11 y tras el análisis comparativo con el manual de referencia `app-storelab-express`, se formalizaron las siguientes decisiones de diseño:
+
+### 8.1 ADR-CLI-01: Ciclo de Vida Lógico Atómico (`deactivate` y `activate`)
+- **Decisión:** Habilitar endpoints explícitos `PATCH /api/clients/:id/deactivate` y `PATCH /api/clients/:id/activate` (con alias en `/clientes` y `/arrendatarios`), restringidos a roles `ADMIN` y `ASESOR`.
+- **Razón:** La eliminación física (`DELETE`) está bloqueada por la regla `RN-CLI-05` cuando existen contratos asociados para salvaguardar la integridad fiscal. Los nuevos endpoints permiten transicionar el estado (`isActive`) sin requerir payloads complejos ni exponer mutaciones accidentales de otros campos.
+
+### 8.2 ADR-CLI-02: Exportación de OpenAPI Specification en Formato JSON (`/api/docs.json`)
+- **Decisión:** Registrar la ruta `/api/docs.json` tanto en la configuración de Swagger (`jsonDocumentUrl: 'api/docs.json'`) como mediante handler del adaptador HTTP de NestJS.
+- **Razón:** Facilita la interoperabilidad y automatización de pipelines CI/CD, permitiendo que herramientas externas (Postman, generadores de clientes TypeScript/Dart, linter Spectral) consuman el contrato OpenAPI directamente.
+
+### 8.3 ADR-CLI-03: Estandarización de Archivos `.http` para Pruebas Rápidas
+- **Decisión:** Disponer de archivos `.http` separados por operación (`clients.get.http`, `clients.create.http`, `clients.update.http`, `clients.delete.http`) en `backend/http/clients/` y en la raíz del módulo.
+- **Razón:** Reduce la fricción de pruebas durante el desarrollo al evitar dependencias de interfaces gráficas pesadas, proveyendo payloads reproducibles con roles (`x-user-role`) y variables parametrizables (`@baseUrl`, `@id`).
+
+### 8.4 ADR-CLI-04: Runner CLI de Seeders con Conteos Parametrizables
+- **Decisión:** Implementar un runner CLI (`run-seeders.ts`) que resuelve conteos de siembra mediante el helper `counts.ts` con orden de precedencia: Argumentos CLI (`--clients=N`) > Variables de entorno (`SEED_CLIENTS=N`) > Conteo por defecto (`DEFAULT_SEED_COUNTS`).
+- **Razón:** Facilita la generación de datasets de tamaño controlado para pruebas de estrés, benchmarking y entornos locales sin modificar el código fuente.
+
+### 8.5 ADR-CLI-05: Multi-enrutamiento Transparente por Alias
+- **Decisión:** Configurar el decorador `@Controller(['arrendatarios', 'clientes', 'clients'])` en `ArrendatariosController`.
+- **Razón:** Mantiene retrocompatibilidad y uniformidad semántica, permitiendo a clientes frontend y scripts externos interactuar usando terminología comercial en español (`/clientes`), legal de dominio inmobiliario (`/arrendatarios`) o estándar internacional REST en inglés (`/clients`).
