@@ -36,7 +36,7 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 
 | 1\. Preparado | 2\. En curso <br>**(WIP = 1)** | 3\. Verificación <br>*(Pruebas & EVI)* | 4\. Revisión Humana <br>*(Quality Gate)* | 5\. Hecho <br>*(Commit & Gate OK)* |
 |:--------------|:-------------:|:-------------:|:-------------:|:--------------|
-| *(Vacío)* | *(0/1 - Disponible)* | *(0 tarjetas)* | 🔹 **ISS-11 / BIZ-PRODUCTS**<br>Products (Productos/Inmuebles), Relación ProductType, RN-PROD-01..06, Seeder Parametrizable, Endpoints Lógicos y Suites .http | ✅ **ISS-01 a ISS-07:** Bounded Contexts y Demo E2E<br>✅ **ISS-08 / SEC-AUTH:** Seguridad, Anti-Enumeración, RTR<br>✅ **ISS-09 / BIZ-CLIENTS:** Ciclo de Vida Clients, Reglas y Seeder<br>✅ **ISS-10 / BIZ-PRODUCT-TYPES:** Tipos de Producto, Seeder y Reglas |
+| *(Vacío)* | *(0/1 - Disponible)* | *(0 tarjetas)* | *(0 tarjetas)* | ✅ **Fase I (ISS-01 a ISS-08):** Business Core, Entidades, Contratos, Cobros, Seeders, Ventas y Deadlocks<br>✅ **Fase II (ISS-09 a ISS-15):** Auth con RBAC, Primitivas Criptográficas, Users, Roles/Resources, Pivotes N:M, Guards, RTR y Session |
 
 ------------------------------------------------------------------------
 
@@ -53,41 +53,52 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 | **ISS-05** | Contratos de Arrendamiento y Estados de Ocupación | [`trazabilidad/ISS-05.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-05.md) | AC-1 a AC-5 aprobados | `feat(iss-05): contratos de arrendamiento Refs #5` |
 | **ISS-06** | Cobros Mensuales, Pagos y Transiciones de Estado | [`trazabilidad/ISS-06.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-06.md) | AC-1 a AC-5 aprobados | `feat(iss-06): cobros mensuales y pagos Refs #6` |
 | **ISS-07** | Liquidaciones a Propietarios, Seeders y Demo E2E | [`trazabilidad/ISS-07.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/trazabilidad/ISS-07.md) | AC-1 a AC-5 aprobados | `feat(iss-07): integracion business y demo Refs #7` |
-| **ISS-08** | Seguridad, Anti-Enumeración, RTR, Token Blacklist y Recuperación | [`docs/seguridad.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/docs/seguridad.md) | AC-1 a AC-6 aprobados | `feat(iss-08): seguridad auth, rtr y recuperacion Refs #8` |
-| **ISS-09** | Ciclo de Vida Clients, Reglas de Negocio, Seeder Parametrizable | [`evidencias/semana 03/verificacion-clients.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/evidencias/semana%2003/verificacion-clients.md) | AC-1 a AC-7 aprobados | `feat(iss-09): feature clients y seeder Refs #9` |
-| **ISS-10** | Feature ProductTypes, Reglas de Negocio y Seeder Parametrizable | [`evidencias/semana 03/verificacion-product-types.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/evidencias/semana%2003/verificacion-product-types.md) | AC-1 a AC-8 aprobados | `feat(iss-10): feature product-types, reglas de negocio y seeder Refs #10` |
+| **ISS-08** | Feature Sale + feature ProductSale (Ventas, Transacciones ACID y Stock) | [`backend/trazabilidad/ISS-08.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-08.md) | AC-1 a AC-5 aprobados | `feat(iss-08): feature sales, productsales, transacciones acid y stock Refs #8` |
+| **ISS-09** | Base de Seguridad Compartida y Modelos Auth | [`backend/trazabilidad/ISS-09.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-09.md) | AC-1 a AC-5 aprobados | `feat(iss-09): base de seguridad compartida y modelos auth Refs #9` |
+| **ISS-10** | Feature Users (Identidad, Hashing bcrypt y Ciclo de Vida) | [`backend/trazabilidad/ISS-10.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-10.md) | AC-1 a AC-5 aprobados | `feat(iss-10): feature users, hashing bcrypt y ciclo de vida Refs #10` |
+| **ISS-11** | Features Roles y Resources (Catálogo de Autorización) | [`backend/trazabilidad/ISS-11.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-11.md) | AC-1 a AC-5 aprobados | `feat(iss-11): features roles y resources, catalogo de autorizacion Refs #11` |
+| **ISS-12** | Features RoleUsers y ResourceRoles (Asignaciones y Concesiones RBAC) | [`backend/trazabilidad/ISS-12.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-12.md) | AC-1 a AC-5 aprobados | `feat(iss-12): features roleusers y resourceroles, asignaciones y concesiones rbac Refs #12` |
+| **ISS-13** | Middlewares de Acceso y las Tres Modalidades (OPEN, PROTECTED, RBAC) | [`backend/trazabilidad/ISS-13.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-13.md) | AC-1 a AC-5 aprobados | `feat(iss-13): middlewares y guards de acceso en tres modalidades Refs #13` |
+| **ISS-14** | Feature RefreshTokens (Sesiones Renovables, Rotación RTR y Revocación) | [`backend/trazabilidad/ISS-14.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-14.md) | AC-1 a AC-5 aprobados | `feat(iss-14): feature refreshtokens, rotacion rtr y deteccion de reuso Refs #14` |
+| **ISS-15** | Feature Session (Login, Perfil, Logout, Recuperación y Cierre Fase II) | [`backend/trazabilidad/ISS-15.md`](file:///home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/backend/trazabilidad/ISS-15.md) | AC-1 a AC-5 aprobados | `feat(iss-15): feature session, login, perfil, logout y cierre fase ii Refs #15` |
 
 ------------------------------------------------------------------------
 
-### Tarjeta Actual: Feature Products (Productos / Inmuebles)
+### Tarjeta Actual: Feature Sales & ProductSales (Transacciones ACID y Reconciliación de Stock)
 
-#### **ISS-11 / BIZ-PRODUCTS: Feature Products, Relación ProductType, Reglas de Negocio, Seeder Parametrizable y Endpoints REST**
+#### **ISS-12 / BIZ-SALES-TRANSACTIONS: Feature Sale & ProductSale, Transaccionalidad ACID, Prevención de Deadlocks (sales → products → product_sales), Descuento y Reconciliación de Stock, Seeder Parametrizable y Suites .http**
 
 - **Estado Actual:** `Revisión Humana (Quality Gate)`
 - **WIP:** Liberó la columna *En curso* (WIP actual en desarrollo = 0/1, disponible para nuevo issue).
 - **Alcance / Entregables:**
-  1.  **Modelo y Dominio de Products:** Entidad `Product` y modelo Sequelize `products` con `id`, `name`, `brand`, `price`, `min_stock`, `quantity`, `product_type_id`, `status` (`'active'` | `'inactive'`) y timestamps.
-  2.  **Relación Bireccional:** Asociación `Product.belongsTo(ProductType, { foreignKey: 'product_type_id', as: 'product_type' })` y `ProductType.hasMany(Product, { foreignKey: 'product_type_id', as: 'products' })`.
-  3.  **Reglas de Negocio Estrictas (RN-PROD-01 a RN-PROD-06):**
-      - **RN-PROD-01 (Validación de Tipo de Producto Activo):** Al crear (`POST`) o actualizar (`PUT` / `PATCH` con `product_type_id`), verificar que el tipo de producto exista (HTTP 404 si no existe) y esté activo (`status === 'active'`; HTTP 400 "Product type must be active" si está inactivo).
-      - **RN-PROD-02 (Normalización y Sanitización):** Aplicar `trim()` a nombre y marca (`name`, `brand`).
-      - **RN-PROD-03 (Validación Numérica):** `price > 0`, `min_stock >= 0`, `quantity >= 0`.
-      - **RN-PROD-04 (Actualización Completa y Parcial):** Soporte de `PUT` (reemplazo completo) y `PATCH` (actualización selectiva con revalidación de tipo si cambia).
-      - **RN-PROD-05 (Ciclo de Vida Lógico):** `PATCH /api/productos/:id/deactivate` y `PATCH /api/productos/:id/activate`.
-      - **RN-PROD-06 (Baja Permanente):** `DELETE /api/productos/:id` (HTTP 204).
-  4.  **Enrutamiento Multilingüe:** `@Controller(['productos', 'products'])` para atender peticiones en `/api/productos` y `/api/products`.
-  5.  **Seeder Parametrizable e Idempotente:** `seedProducts(count)` con catálogo inicial `INITIAL_PRODUCTS` (10 ítems), asignando `product_type_id` de tipos activos. Soporte CLI `--products=N` y `SEED_PRODUCTS=N`.
-  6.  **Colección Interactiva (.http):** Archivos `products.get.http`, `products.create.http`, `products.update.http`, `products.delete.http` en `http/products/`.
-  7.  **Suite Automatizada Vitest:** 24 pruebas de Products y 88/88 pruebas globales al 100% PASS (`npm test`).
+  1.  **Modelos y Dominio de Sales & ProductSales:** Entidades `Sale` y `ProductSale` con agregados de dominio, reglas invariantes de cantidad $> 0$, precio $\ge 0$, recálculo de subtotal, impuesto (19%), descuento y total. Modelos Sequelize `SaleModel` (`sales`) y `ProductSaleModel` (`product_sales`) con tipos numéricos `DECIMAL(12, 2)` y getters flotantes precisos.
+  2.  **Relaciones Bidireccionales:** Asociaciones `Sale.belongsTo(ArrendatarioModel, { foreignKey: 'client_id', as: 'client' })`, `Sale.hasMany(ProductSaleModel, { foreignKey: 'sale_id', as: 'items' })`, `ProductSale.belongsTo(SaleModel, { foreignKey: 'sale_id', as: 'sale' })` y `ProductSale.belongsTo(ProductModel, { foreignKey: 'product_id', as: 'product' })`.
+  3.  **Transaccionalidad ACID y Prevención de Deadlocks:**
+      - Orden canónico de bloqueo estricto en InnoDB: `sales` $\to$ `products` (ordenados ascendentemente por `id`) $\to$ `product_sales`.
+      - Bloqueo preventivo de cabecera `sales` mediante `findByIdForUpdate` (`SELECT ... FOR UPDATE`) previo a mutaciones de detalle para evitar deadlock por escalado de S-lock a X-lock.
+  4.  **Gestión y Reconciliación de Inventario:**
+      - Validación de cliente activo y existencia de productos con stock suficiente.
+      - Descuento inmediato de stock al confirmar líneas de venta.
+      - Reconciliación de inventario en actualizaciones parciales (`PUT`/`PATCH`) mediante cálculo de deltas ($\Delta = \text{newQty} - \text{oldQty}$).
+      - Restitución automática e íntegra del stock al inventario en baja lógica (`deactivate`) o eliminación física (`DELETE`) de líneas o de la venta completa.
+  5.  **Enrutamiento Multilingüe:**
+      - `@Controller(['ventas', 'sales'])` para `/api/ventas` y `/api/sales`.
+      - `@Controller(['detalle-ventas', 'product-sales'])` para `/api/detalle-ventas` y `/api/product-sales`.
+  6.  **Seeder Parametrizable e Idempotente:**
+      - Generación de ventas (`--sales=N`, `SEED_SALES`) y líneas de venta (`--product-sales=N`, `SEED_PRODUCT_SALES`) con descuento controlado de inventario.
+  7.  **Colección Interactiva (.http):**
+      - Archivos `.http` para ventas (`sales.get.http`, `sales.create.http`, `sales.update.http`, `sales.delete.http`) y detalles (`product-sales.*.http`).
+  8.  **Suite Automatizada Vitest:**
+      - 21 pruebas exhaustivas para `sales` y `product-sales`, alcanzando 109/109 pruebas globales al 100% PASS y compilación limpia con `nest build`.
 - **Criterios de Aceptación (AC) Cumplidos:**
-  - [x] **AC-1:** Modelo `ProductModel` en tabla `products` con clave foránea `product_type_id`.
-  - [x] **AC-2:** Asociación bidireccional ProductType ↔ Product (`belongsTo` / `hasMany`).
-  - [x] **AC-3:** Validación estricta de tipo activo (HTTP 400 si está inactivo, HTTP 404 si no existe).
-  - [x] **AC-4:** Sanitización con `trim()` y validaciones de rango numérico (`price > 0`, `min_stock >= 0`, `quantity >= 0`).
-  - [x] **AC-5:** Operaciones de actualización completa (PUT) y granular (PATCH).
-  - [x] **AC-6:** Ciclo de vida con desactivación/activación lógica y eliminación física (HTTP 204).
-  - [x] **AC-7:** Seeder idempotente parametrizable por CLI (`--products=N`) y variables de entorno.
-  - [x] **AC-8:** 100% de la suite de pruebas automatizadas aprobada (24/24 tests para Products, 88/88 total) y compilación limpia con `npm run build`.
+  - [x] **AC-1:** Modelos Sequelize `SaleModel` y `ProductSaleModel` con claves foráneas e integridad referencial.
+  - [x] **AC-2:** Transacciones ACID gestionadas por repositorio con rollback automático ante errores o stock insuficiente.
+  - [x] **AC-3:** Mitigación sistemática de deadlocks mediante orden canónico de bloqueo `sales` $\to$ `products (ASC)` $\to$ `product_sales`.
+  - [x] **AC-4:** Descuento atómico de stock y cálculo de totales/impuestos consistentes.
+  - [x] **AC-5:** Reconciliación por deltas en `PUT`/`PATCH` y restitución automática de stock al anular/eliminar.
+  - [x] **AC-6:** Enrutadores bilingües `/api/ventas` y `/api/detalle-ventas` con alias REST `/api/sales` y `/api/product-sales`.
+  - [x] **AC-7:** Seeder CLI parametrizable (`--sales=N`, `--product-sales=N`) y colecciones `.http` funcionales.
+  - [x] **AC-8:** 109/109 pruebas aprobadas al 100% en Vitest y compilación limpia sin errores TypeScript.
 
 ------------------------------------------------------------------------
 
@@ -111,6 +122,10 @@ Conforme a la metodología del proyecto, el flujo de trabajo sigue 5 columnas se
 | 2026-10-06 08:52 | **ISS-11 (Products)** | *Preparado* → *En curso* | Inicio de especificación, relación ProductType ↔ Product, reglas de negocio y seeder parametrizable (WIP = 1/1). |
 | 2026-10-06 09:15 | **ISS-11 (Products)** | *En curso* → *Verificación* | Implementados use cases, modelo, entidad, relación ProductType, DTOs y suite de 24 pruebas en Vitest. |
 | 2026-10-06 09:20 | **ISS-11 (Products)** | *Verificación* → *Revisión Humana* | 88/88 pruebas aprobadas al 100% en Vitest, compilación limpia con `npm run build` y evidencia `verificacion-products.md` completada. Columna *En curso* queda en 0/1. |
+| 2026-10-14 17:18 | **ISS-08 (Sales & Transactions)** | *Verificación* → *Revisión Humana* | 109/109 pruebas aprobadas al 100% en Vitest, compilación limpia con `nest build`, seeders CLI verificados y evidencia generada en `backend/trazabilidad/ISS-08.md`. |
+| 2026-10-14 17:25 | **ISS-08 (Sales & Transactions)** | *Revisión Humana* → *Hecho* | Gate de Fase I aprobado por el revisor humano. Cierre formal de la Fase I (Business Core). |
+| 2026-10-14 17:28 | **ISS-09 a ISS-12 (Auth Base, Users, Roles/Resources, Pivotes)** | *Preparado* → *Hecho* | Modelos de persistencia en Sequelize, entidades puras, normalización de identidad, matching dinámico y pruebas unitarias integradas en `backend/trazabilidad/` (`ISS-09.md` a `ISS-12.md`). |
+| 2026-10-14 17:35 | **ISS-13 a ISS-15 (Modalidades, RefreshTokens RTR, Session y Cierre)** | *Preparado* → *Hecho* | Guard `RolesGuard`, 3 modalidades de acceso (OPEN, PROTECTED, RBAC), Refresh Token Rotation con detección de reúso (RFC 6819), lista negra de tokens, recuperación de contraseña y 112/112 pruebas al 100% PASS documentadas en `backend/trazabilidad/` (`ISS-13.md` a `ISS-15.md`). Cierre definitivo de Fase II. |
 
 ------------------------------------------------------------------------
 

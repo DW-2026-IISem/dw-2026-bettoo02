@@ -287,3 +287,30 @@ En el marco de la evolución técnica del backend NestJS 11 y tras el análisis 
 ### 8.5 ADR-CLI-05: Multi-enrutamiento Transparente por Alias
 - **Decisión:** Configurar el decorador `@Controller(['arrendatarios', 'clientes', 'clients'])` en `ArrendatariosController`.
 - **Razón:** Mantiene retrocompatibilidad y uniformidad semántica, permitiendo a clientes frontend y scripts externos interactuar usando terminología comercial en español (`/clientes`), legal de dominio inmobiliario (`/arrendatarios`) o estándar internacional REST en inglés (`/clients`).
+
+------------------------------------------------------------------------
+
+## 9. Decisiones Arquitectónicas de Sales, ProductSales y Transacciones ACID (ISS-12)
+
+Con motivo del acoplamiento integral de la Fase I Business del portal de referencia académico (`https://tecnogua.com/academic/site/backend2026/express/`), se formalizan las decisiones de diseño para las transacciones de ventas e ítems de detalle:
+
+### 9.1 ADR-SAL-01: Orden Canónico de Bloqueo Anti-Deadlock (`sales → products → product_sales`)
+- **Decisión:** En toda operación multi-tabla que involucre cabeceras de venta, productos e ítems de detalle, el orden de adquisición de bloqueos en InnoDB es invariante:
+  $$\text{sales} \longrightarrow \text{products (ordenados por product\_id asc)} \longrightarrow \text{product\_sales}$$
+- **Razón:** La concurrencia de transacciones simultáneas insertando o mutando líneas N:M causa interbloqueos (*deadlocks*) si los recursos se adquieren en orden dispar. El orden ascendente por clave primaria garantiza que ninguna transacción espere en ciclo a otra.
+
+### 9.2 ADR-SAL-02: Bloqueo Preventivo X-Lock (`SELECT ... FOR UPDATE`) contra Upgrade S->X por Foreign Keys
+- **Decisión:** Antes de insertar o modificar filas en `product_sales`, se bloquea la fila padre en `sales` mediante `findByIdForUpdate` (`SELECT ... FOR UPDATE`).
+- **Razón:** Las inserciones en `product_sales` adquieren automáticamente un S-lock sobre la cabecera `sales` para validar la integridad referencial. Cuando el recálculo posterior de totales solicita un X-lock sobre `sales`, dos transacciones concurrentes con S-lock se bloquean mutuamente intentando escalar a X-lock. El bloqueo exclusivo inicial elimina la competencia de escalado.
+
+### 9.3 ADR-SAL-03: Reconciliación Atómica de Inventario por Deltas y Restitución en Bajas
+- **Decisión:** 
+  1. En creación: el stock se descuenta inmediatamente tras verificar disponibilidad (`quantity >= requested`).
+  2. En actualización (`PUT`/`PATCH`): se calcula el delta $\Delta = \text{newQty} - \text{oldQty}$. Si $\Delta > 0$, se descuenta stock previa verificación; si $\Delta < 0$, se reintegra al stock.
+  3. En baja lógica (`deactivate`) o física (`delete`): el stock de las líneas activas se restituye íntegramente al producto correspondiente y se recalculan los totales de la venta.
+- **Razón:** Garantiza consistencia estricta en el inventario físico disponible sin permitir stocks negativos ni pérdidas de existencias por cancelaciones.
+
+### 9.4 ADR-SAL-04: Multi-enrutamiento Dual Comercial e Internacional
+- **Decisión:** Controladores decorados con `@Controller(['ventas', 'sales'])` y `@Controller(['detalle-ventas', 'product-sales'])`.
+- **Razón:** Brinda soporte simultáneo y transparente a consumidores que siguen la nomenclatura curricular en español del laboratorio universitario y a clientes de integración que siguen estándares REST internacionales en inglés.
+
