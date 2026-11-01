@@ -1,138 +1,50 @@
-<aside class="w-64 bg-slate-900 text-slate-200 h-full flex flex-col justify-between p-4 select-none">
+<aside class="w-64 bg-slate-900 text-slate-200 h-full flex flex-col justify-between p-4 select-none shrink-0">
 
-  <div class="space-y-6">
+  <div class="space-y-6 overflow-y-auto">
 
-    <!-- Grupo 1: General -->
+    @for (group of navGroups(); track group.title) {
 
-    <div>
+      <div>
 
-      <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+        <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
 
-        Principal
+          {{ group.title }}
 
-      </p>
+        </p>
 
-      <ul class="space-y-1 text-sm">
+        <ul class="space-y-1 text-sm">
 
-        <li>
+          @for (item of group.items; track item.route) {
 
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-emerald-600 text-white font-medium cursor-pointer">
+            <li>
 
-            <i class="pi pi-chart-bar"></i>
+              <a
 
-            <span>Dashboard</span>
+                [routerLink]="item.route"
 
-          </a>
+                routerLinkActive="bg-emerald-600 text-white font-medium shadow-xs"
 
-        </li>
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors"
 
-      </ul>
+              >
 
-    </div>
+                <i [class]="item.icon"></i>
 
-    <!-- Grupo 2: Negocio Inmobiliario (Fase I) -->
+                <span>{{ item.label }}</span>
 
-    <div>
+              </a>
 
-      <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            </li>
 
-        Gestión Inmobiliaria
+          }
 
-      </p>
+        </ul>
 
-      <ul class="space-y-1 text-sm">
+      </div>
 
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-users"></i>
-
-            <span>Arrendatarios (Clientes)</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-id-card"></i>
-
-            <span>Propietarios</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-home"></i>
-
-            <span>Inmuebles</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-file-edit"></i>
-
-            <span>Contratos</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-wallet"></i>
-
-            <span>Cobros y Pagos</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-percentage"></i>
-
-            <span>Liquidaciones</span>
-
-          </a>
-
-        </li>
-
-        <li>
-
-          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
-
-            <i class="pi pi-wrench"></i>
-
-            <span>Mantenimiento</span>
-
-          </a>
-
-        </li>
-
-      </ul>
-
-    </div>
+    }
 
   </div>
-
-  <!-- Pie del Aside -->
 
   <div class="pt-4 border-t border-slate-800 text-xs text-slate-400 px-3">
 

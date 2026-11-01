@@ -734,3 +734,397 @@ export class App {
 ```
 
 ![![](images/clipboard-3665533878.png)](images/clipboard-380746271.png)
+
+## **ISS-01B · Capa 2: Construir**
+
+Realiza estos **4 pasos** en tus archivos de `frontend/src/app/`:
+
+### **Paso 1: Hacer interactivo el `Header` (`header.ts` y `header.html`)** 
+
+1.  Abre `frontend/src/app/core/layout/header/header.ts` y añade `output` y `ButtonModule` de PrimeNG para emitir el evento de abrir/cerrar el menú lateral:
+
+``` typescript
+import { Component, input, output } from '@angular/core';
+
+import { ButtonModule } from 'primeng/button';
+
+@Component({
+
+  selector: 'app-header',
+
+  imports: [ButtonModule],
+
+  templateUrl: './header.html',
+
+  styleUrl: './header.css',
+
+})
+
+export class Header {
+
+  // Recibe del padre si el sidebar está abierto (para cambiar el ícono si queremos)
+
+  readonly sidebarOpen = input<boolean>(true);
+
+  // Emite al padre cuando el usuario presiona el botón de menú
+
+  readonly toggleSidebar = output<void>();
+
+}
+```
+
+![](images/clipboard-1045119835.png)
+
+2.  Abre `frontend/src/app/core/layout/header/header.html` y añade el botón `<p-button>` de PrimeNG al lado del logo de **Arrendo360**:
+
+``` html
+<header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs">
+
+  <div class="flex items-center gap-3">
+
+    <!-- Botón PrimeNG que dispara el output toggleSidebar -->
+
+    <p-button
+
+      [icon]="sidebarOpen() ? 'pi pi-bars' : 'pi pi-align-left'"
+
+      [rounded]="true"
+
+      [text]="true"
+
+      severity="secondary"
+
+      (onClick)="toggleSidebar.emit()"
+
+      title="Mostrar / ocultar menú lateral"
+
+    />
+
+    <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+
+      <i class="pi pi-building text-xl"></i>
+
+    </div>
+
+    <div>
+
+      <h1 class="text-lg font-bold text-slate-800 leading-tight">Arrendo360</h1>
+
+      <p class="text-xs text-slate-500">Plataforma de Gestión Inmobiliaria</p>
+
+    </div>
+
+  </div>
+
+  <!-- Estado / Usuario -->
+
+  <div class="flex items-center gap-4">
+
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+
+      API Local :3002
+
+    </span>
+
+    <div class="flex items-center gap-2 text-sm text-slate-700 font-medium">
+
+      <i class="pi pi-user text-slate-500"></i>
+
+      <span>Administrador</span>
+
+    </div>
+
+  </div>
+
+</header>
+```
+
+![](images/clipboard-1622906444.png)
+
+### **Paso 2: Convertir el `Aside` en un menú reactivo basado en datos (`aside.ts` y `aside.html`)**
+
+1.   Abre `frontend/src/app/core/layout/aside/aside.ts` y define las secciones y enlaces del menú usando `signal()` y `RouterLink` / `RouterLinkActive`:
+
+``` typescript
+import { Component, signal } from '@angular/core';
+
+import { RouterLink, RouterLinkActive } from '@angular/router';
+
+export interface NavItem {
+
+  label: string;
+
+  icon: string;
+
+  route: string;
+
+}
+
+export interface NavGroup {
+
+  title: string;
+
+  items: NavItem[];
+
+}
+
+@Component({
+
+  selector: 'app-aside',
+
+  imports: [RouterLink, RouterLinkActive],
+
+  templateUrl: './aside.html',
+
+  styleUrl: './aside.css',
+
+})
+
+export class Aside {
+
+  protected readonly navGroups = signal<NavGroup[]>([
+
+    {
+
+      title: 'Principal',
+
+      items: [
+
+        { label: 'Dashboard', icon: 'pi pi-chart-bar', route: '/dashboard' },
+
+      ],
+
+    },
+
+    {
+
+      title: 'Gestión Inmobiliaria',
+
+      items: [
+
+        { label: 'Arrendatarios (Clientes)', icon: 'pi pi-users', route: '/clients' },
+
+        { label: 'Propietarios', icon: 'pi pi-id-card', route: '/propietarios' },
+
+        { label: 'Inmuebles', icon: 'pi pi-home', route: '/inmuebles' },
+
+        { label: 'Contratos', icon: 'pi pi-file-edit', route: '/contratos' },
+
+        { label: 'Cobros y Pagos', icon: 'pi pi-wallet', route: '/cobros' },
+
+        { label: 'Liquidaciones', icon: 'pi pi-percentage', route: '/liquidaciones' },
+
+        { label: 'Mantenimiento', icon: 'pi pi-wrench', route: '/mantenimiento' },
+
+      ],
+
+    },
+
+    {
+
+      title: 'Catálogo Comercial',
+
+      items: [
+
+        { label: 'Tipos de Producto', icon: 'pi pi-tags', route: '/product-types' },
+
+        { label: 'Productos', icon: 'pi pi-box', route: '/products' },
+
+        { label: 'Ventas', icon: 'pi pi-shopping-cart', route: '/sales' },
+
+      ],
+
+    },
+
+  ]);
+
+}
+```
+
+![](images/clipboard-3296704211.png)
+
+2.  Abre `frontend/src/app/core/layout/aside/aside.html` y usa el bloque moderno `@for` de Angular para renderizar los grupos y marcar en verde (`bg-emerald-600 text-white`) la ruta activa automáticamente:
+
+``` html
+<aside class="w-64 bg-slate-900 text-slate-200 h-full flex flex-col justify-between p-4 select-none shrink-0">
+
+  <div class="space-y-6 overflow-y-auto">
+
+    @for (group of navGroups(); track group.title) {
+
+      <div>
+
+        <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+
+          {{ group.title }}
+
+        </p>
+
+        <ul class="space-y-1 text-sm">
+
+          @for (item of group.items; track item.route) {
+
+            <li>
+
+              <a
+
+                [routerLink]="item.route"
+
+                routerLinkActive="bg-emerald-600 text-white font-medium shadow-xs"
+
+                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors"
+
+              >
+
+                <i [class]="item.icon"></i>
+
+                <span>{{ item.label }}</span>
+
+              </a>
+
+            </li>
+
+          }
+
+        </ul>
+
+      </div>
+
+    }
+
+  </div>
+
+  <div class="pt-4 border-t border-slate-800 text-xs text-slate-400 px-3">
+
+    <p class="font-medium text-slate-300">Arrendo360 v1.0</p>
+
+    <p>Universidad de La Guajira</p>
+
+  </div>
+
+</aside>
+```
+
+![](images/clipboard-2597373374.png)
+
+### **Paso 3: Conectar el estado `sidebarOpen` en `src/app/app.ts` y `src/app/app.html`**
+
+1.   Abre `frontend/src/app/app.ts` y agrega el signal `sidebarOpen` junto con el método `onToggleSidebar()`:
+
+``` typescript
+import { Component, signal } from '@angular/core';
+
+import { RouterOutlet } from '@angular/router';
+
+import { Header } from './core/layout/header/header';
+
+import { Aside } from './core/layout/aside/aside';
+
+import { Footer } from './core/layout/footer/footer';
+
+@Component({
+
+  imports: [RouterOutlet, Header, Aside, Footer],
+
+  selector: 'app-root',
+
+  styleUrl: './app.css',
+
+  templateUrl: './app.html',
+
+})
+
+export class App {
+
+  protected readonly title = signal('Arrendo360');
+
+  protected readonly sidebarOpen = signal(true);
+
+  protected onToggleSidebar(): void {
+
+    this.sidebarOpen.update((open) => !open);
+
+  }
+
+}
+```
+
+![](images/clipboard-2214880921.png)
+
+2.   Abre `frontend/src/app/app.html` y conecta `[sidebarOpen]` y `(toggleSidebar)` en `<app-header>`, y envuelve `<app-aside />` en un bloque `@if (sidebarOpen())`:
+
+``` html
+<div class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+
+  <!-- Cabecera con input y output conectados -->
+
+  <app-header
+
+    [sidebarOpen]="sidebarOpen()"
+
+    (toggleSidebar)="onToggleSidebar()"
+
+  />
+
+  <!-- Cuerpo principal -->
+
+  <div class="flex flex-1 overflow-hidden">
+
+    @if (sidebarOpen()) {
+
+      <app-aside />
+
+    }
+
+    <main class="flex-1 p-6 overflow-y-auto">
+
+      <div class="max-w-7xl mx-auto">
+
+        <router-outlet />
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <app-footer />
+
+</div>
+```
+
+![](images/clipboard-439479196.png)
+
+### **Paso 4: Configurar redirección inicial en `src/app/app.routes.ts`**
+
+Para que al entrar a [`http://localhost:4200`](http://localhost:4200) no quede vacío el `<router-outlet />`, abre `frontend/src/app/app.routes.ts` y define la redirección por defecto a `/dashboard` (en el ISS-02 crearemos el layout/páginas y servicios):
+
+``` typescript
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [
+
+  {
+
+    path: '',
+
+     pathMatch: 'full',
+
+    redirectTo: 'dashboard',
+
+  },
+
+  {
+
+    path: '**',
+
+    redirectTo: 'dashboard',
+
+  },
+
+];
+```
+
+![](images/clipboard-1067196843.png)

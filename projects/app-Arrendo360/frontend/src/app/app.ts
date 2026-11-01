@@ -10,8 +10,11 @@ import { Footer } from './core/layout/footer/footer';
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
+
 export class App {
-
   protected readonly title = signal('Arrendo360');
-
+  protected readonly sidebarOpen = signal(true);
+  protected onToggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
 }

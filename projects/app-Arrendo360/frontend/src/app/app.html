@@ -1,47 +1,22 @@
 <div class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+  <!-- Cabecera con input y output conectados -->
+  <app-header
+    [sidebarOpen]="sidebarOpen()"
+    (toggleSidebar)="onToggleSidebar()"
+  />
 
-  <!-- Cabecera superior -->
-
-  <app-header />
-
-  <!-- Cuerpo principal: Aside izquierdo + Contenido central -->
+  <!-- Cuerpo principal -->
 
   <div class="flex flex-1 overflow-hidden">
-
-    <app-aside />
+    @if (sidebarOpen()) {
+      <app-aside />
+    }
 
     <main class="flex-1 p-6 overflow-y-auto">
-
       <div class="max-w-7xl mx-auto">
-
-        <!-- Tarjeta de bienvenida temporal mientras creamos las rutas en ISS-01B -->
-
-        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
-
-          <h2 class="text-xl font-bold text-slate-800 mb-2">
-
-            Bienvenido a {{ title() }}
-
-          </h2>
-
-          <p class="text-sm text-slate-600">
-
-            ISS-01A completado: Composición visual de Header, Aside y Footer lista.
-
-          </p>
-
-        </div>
-
         <router-outlet />
-
       </div>
-
     </main>
-
   </div>
-
-  <!-- Pie de página -->
-
   <app-footer />
-
 </div>
