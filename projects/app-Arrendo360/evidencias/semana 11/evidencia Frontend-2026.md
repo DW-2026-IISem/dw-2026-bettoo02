@@ -400,3 +400,337 @@ Para comprobar que tu **ISS-01** quedó sin errores:
 3.  Abre [`http://localhost:4200`](http://localhost:4200) en tu navegador.
 
 ![](images/clipboard-4013073398.png)
+
+## **ISS-01A · Capa 2: Construir**
+
+Abre una terminal en `frontend/` (`/home/betto_ubuntu/ia-lab/dw-2026-bettoo02/projects/app-Arrendo360/frontend`) y sigue estos **5 pasos**:
+
+### **Paso 1: Generar los 3 componentes del Layout con Angular CLI**
+
+Ejecuta estos comandos para que el CLI cree la carpeta `core/layout/` con los tres componentes:
+
+``` bash
+npx ng g c core/layout/header --skip-tests
+
+npx ng g c core/layout/aside --skip-tests
+
+npx ng g c core/layout/footer --skip-tests
+```
+
+![](images/clipboard-2358956210.png)
+
+### **Paso 2: Maquetar el componente `Header`**
+
+Abre el archivo `frontend/src/app/core/layout/header/header.html` y coloca este diseño con Tailwind + PrimeIcons:
+
+``` html
+<header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs">
+
+  <!-- Marca Arrendo360 -->
+
+  <div class="flex items-center gap-3">
+
+    <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+
+      <i class="pi pi-building text-xl"></i>
+
+    </div>
+
+    <div>
+
+      <h1 class="text-lg font-bold text-slate-800 leading-tight">Arrendo360</h1>
+
+      <p class="text-xs text-slate-500">Plataforma de Gestión Inmobiliaria</p>
+
+    </div>
+
+  </div>
+
+  <!-- Estado / Usuario (estático en ISS-01A) -->
+
+  <div class="flex items-center gap-4">
+
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+
+      API Local :3002
+
+    </span>
+
+    <div class="flex items-center gap-2 text-sm text-slate-700 font-medium">
+
+      <i class="pi pi-user text-slate-500"></i>
+
+      <span>Administrador</span>
+
+    </div>
+
+  </div>
+
+</header>
+```
+
+![](images/clipboard-2447271773.png)
+
+### **Paso 3: Maquetar el componente `Aside` (Menú lateral inmobiliario)**
+
+Abre el archivo `frontend/src/app/core/layout/aside/aside.html` y escribe la estructura del menú de navegación de **Arrendo360**:
+
+``` html
+<aside class="w-64 bg-slate-900 text-slate-200 h-full flex flex-col justify-between p-4 select-none">
+
+  <div class="space-y-6">
+
+    <!-- Grupo 1: General -->
+
+    <div>
+
+      <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+
+        Principal
+
+      </p>
+
+      <ul class="space-y-1 text-sm">
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-emerald-600 text-white font-medium cursor-pointer">
+
+            <i class="pi pi-chart-bar"></i>
+
+            <span>Dashboard</span>
+
+          </a>
+
+        </li>
+
+      </ul>
+
+    </div>
+
+    <!-- Grupo 2: Negocio Inmobiliario (Fase I) -->
+
+    <div>
+
+      <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+
+        Gestión Inmobiliaria
+
+      </p>
+
+      <ul class="space-y-1 text-sm">
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-users"></i>
+
+            <span>Arrendatarios (Clientes)</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-id-card"></i>
+
+            <span>Propietarios</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-home"></i>
+
+            <span>Inmuebles</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-file-edit"></i>
+
+            <span>Contratos</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-wallet"></i>
+
+            <span>Cobros y Pagos</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-percentage"></i>
+
+            <span>Liquidaciones</span>
+
+          </a>
+
+        </li>
+
+        <li>
+
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors">
+
+            <i class="pi pi-wrench"></i>
+
+            <span>Mantenimiento</span>
+
+          </a>
+
+        </li>
+
+      </ul>
+
+    </div>
+
+  </div>
+
+  <!-- Pie del Aside -->
+
+  <div class="pt-4 border-t border-slate-800 text-xs text-slate-400 px-3">
+
+    <p class="font-medium text-slate-300">Arrendo360 v1.0</p>
+
+    <p>Universidad de La Guajira</p>
+
+  </div>
+
+</aside>
+```
+
+![](images/clipboard-1778842854.png)
+
+### **Paso 4: Maquetar el componente `Footer`**
+
+Abre el archivo `frontend/src/app/core/layout/footer/footer.html` y coloca este contenido:
+
+``` html
+<footer class="h-12 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-xs text-slate-500">
+
+  <span>© 2026 <strong>Arrendo360</strong> — Ingeniería de Sistemas · Universidad de La Guajira</span>
+
+  <span>Stack: Angular 22 · PrimeNG 22 · Tailwind 4 · Express/NestJS</span>
+
+</footer>
+```
+
+![](images/clipboard-615533166.png)
+
+### **Paso 5: Ensamblar el Layout en `src/app/app.ts` y `src/app/app.html`**
+
+Ahora conectamos los 3 componentes dentro del componente raíz `src/app/app.ts`:
+
+1.  En `frontend/src/app/app.ts`, importa `Header`, `Aside` y `Footer`:
+
+``` typescript
+import { Component, signal } from '@angular/core';
+
+import { RouterOutlet } from '@angular/router';
+
+import { Header } from './core/layout/header/header';
+
+import { Aside } from './core/layout/aside/aside';
+
+import { Footer } from './core/layout/footer/footer';
+
+@Component({
+
+  imports: [RouterOutlet, Header, Aside, Footer],
+
+  selector: 'app-root',
+
+  styleUrl: './app.css',
+
+  templateUrl: './app.html',
+
+})
+
+export class App {
+
+  protected readonly title = signal('Arrendo360');
+
+}
+```
+
+![](images/clipboard-3051994664.png)
+
+2.   En `frontend/src/app/app.html`, arma el esqueleto completo (Shell) de la aplicación:
+
+``` html
+<div class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+
+  <!-- Cabecera superior -->
+
+  <app-header />
+
+  <!-- Cuerpo principal: Aside izquierdo + Contenido central -->
+
+  <div class="flex flex-1 overflow-hidden">
+
+    <app-aside />
+
+    <main class="flex-1 p-6 overflow-y-auto">
+
+      <div class="max-w-7xl mx-auto">
+
+        <!-- Tarjeta de bienvenida temporal mientras creamos las rutas en ISS-01B -->
+
+        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+
+          <h2 class="text-xl font-bold text-slate-800 mb-2">
+
+            Bienvenido a {{ title() }}
+
+          </h2>
+
+          <p class="text-sm text-slate-600">
+
+            ISS-01A completado: Composición visual de Header, Aside y Footer lista.
+
+          </p>
+
+        </div>
+
+        <router-outlet />
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Pie de página -->
+
+  <app-footer />
+
+</div>
+```
+
+![![](images/clipboard-3665533878.png)](images/clipboard-380746271.png)
