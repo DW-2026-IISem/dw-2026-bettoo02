@@ -1,0 +1,71 @@
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Panel Principal — Arrendo360</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-02: Núcleo de servicios HTTP, environments y contrato ApiResponse conectados.
+
+      </p>
+
+    </div>
+
+    <p-button
+
+      label="Verificar API"
+
+      icon="pi pi-refresh"
+
+      severity="success"
+
+      [loading]="healthService.checking()"
+
+      (onClick)="healthService.checkHealth()"
+
+    />
+
+  </div>
+
+  <!-- Tarjeta de estado de conexión con el Backend -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+
+    <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+
+      Estado de Conexión con Backend (:3002/api/health)
+
+    </h3>
+
+    <div class="flex items-center gap-3">
+
+      @if (healthService.isOnline()) {
+
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm border border-emerald-200">
+
+          <i class="pi pi-check-circle text-emerald-600"></i>
+
+          Backend Conectado (status: ok)
+
+        </span>
+
+      } @else {
+
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 font-medium text-sm border border-red-200">
+
+          <i class="pi pi-times-circle text-red-600"></i>
+
+          Backend Desconectado (Verifica que el backend corra en puerto 3002)
+
+        </span>
+
+      }
+
+    </div>
+
+  </div>
+
+</div>

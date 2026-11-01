@@ -1128,3 +1128,377 @@ export const routes: Routes = [
 ```
 
 ![](images/clipboard-1067196843.png)
+
+### **ISS-02 · Capa 2**
+
+Sigue estos **6 pasos**:
+
+#### **Paso 1: Generar los archivos de `environments`**
+
+En tu terminal dentro de `frontend/`, ejecuta:
+
+``` bash
+npx ng g environments
+```
+
+![](images/clipboard-2720276398.png)
+
+Esto creará `src/environments/environment.ts` y `src/environments/environment.development.ts`. Abre **ambos archivos** (`environment.ts` y `environment.development.ts`) y ponles este contenido apuntando al puerto `3002` de tu backend Arrendo360:
+
+``` typescript
+export const environment = {
+
+  production: false,
+
+  apiUrl: 'http://localhost:3002/api',
+
+  appName: 'Arrendo360',
+
+};
+```
+
+![](images/clipboard-292091219.png)
+
+#### **Paso 2: Habilitar `provideHttpClient` en `src/app/app.config.ts`**
+
+Abre `frontend/src/app/app.config.ts`, importa `provideHttpClient` y `withFetch` desde `@angular/common/http` y agrégalo al arreglo `providers`:
+
+``` typescript
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+
+import { provideRouter } from '@angular/router';
+
+import { provideHttpClient, withFetch } from '@angular/common/http';
+
+import { providePrimeNG } from 'primeng/config';
+
+import Aura from '@primeuix/themes/aura';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+
+  providers: [
+
+    provideZonelessChangeDetection(),
+
+    provideRouter(routes),
+
+    provideHttpClient(withFetch()),
+
+    providePrimeNG({
+
+      ripple: true,
+
+      theme: {
+
+        preset: Aura,
+
+        options: {
+
+          darkModeSelector: '.app-dark',
+
+          cssLayer: {
+
+            name: 'primeng',
+
+            order: 'tailwind-base, primeng, tailwind-utilities',
+
+          },
+
+        },
+
+      },
+
+    }),
+
+  ],
+
+};
+```
+
+#### ![](images/clipboard-495600160.png)
+
+#### **Paso 3: Crear el modelo espejo del contrato REST (`src/app/core/models/api-response.model.ts`)**
+
+Crea la carpeta `src/app/core/models/` y dentro el archivo `api-response.model.ts`:
+
+``` typescript
+/**
+
+ * Espejo exacto de ResponseInterceptor del backend Arrendo360
+
+ */
+
+export interface ApiResponse<T> {
+
+  statusCode: number;
+
+  message: string;
+
+  data: T;
+
+  timestamp?: string;
+
+}
+
+/**
+
+ * Estructura estándar para respuestas paginadas del backend
+
+ */
+
+export interface PaginatedResponse<T> {
+
+  items?: T[];
+
+  rows?: T[];
+
+  total: number;
+
+  page: number;
+
+  limit: number;
+
+}
+
+export interface HealthStatus {
+
+  status: string;
+
+}
+```
+
+#### ![](images/clipboard-2633260745.png)
+
+#### **Paso 4: Crear el servicio de verificación de salud (`src/app/core/services/health.service.ts`)**
+
+Genera o crea el archivo `frontend/src/app/core/services/health.service.ts` para probar nuestro primer flujo `Service → HttpClient → API`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { environment } from '../../../environments/environment';
+
+import { ApiResponse, HealthStatus } from '../models/api-response.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class HealthService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/health`;
+
+  // Signals reactivos para saber si el backend en :3002 está en línea
+
+  readonly isOnline = signal<boolean>(false);
+
+  readonly checking = signal<boolean>(false);
+
+  readonly lastChecked = signal<string | null>(null);
+
+  checkHealth(): void {
+
+    this.checking.set(true);
+
+    this.http.get<ApiResponse<HealthStatus>>(this.apiUrl).subscribe({
+
+      next: (res) => {
+
+        this.isOnline.set(res?.data?.status === 'ok');
+
+        this.lastChecked.set(res?.timestamp ?? new Date().toISOString());
+
+        this.checking.set(false);
+
+      },
+
+      error: () => {
+
+        this.isOnline.set(false);
+
+        this.checking.set(false);
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+#### ![](images/clipboard-3673330302.png)
+
+#### **Paso 5: Crear el componente `Dashboard` inicial para resolver las rutas**
+
+Ejecuta en la terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/dashboard/dashboard --skip-tests
+```
+
+![](images/clipboard-883162314.png)
+
+1.  Abre `frontend/src/app/features/dashboard/dashboard/dashboard.ts` (o `features/dashboard/dashboard.ts` según la ruta que cree el CLI) y conéctalo con `HealthService`:
+
+``` typescript
+import { Component, OnInit, inject } from '@angular/core';
+
+import { ButtonModule } from 'primeng/button';
+
+import { HealthService } from '../../core/services/health.service'; // Ajusta ../ según la profundidad de carpeta
+
+@Component({
+
+  selector: 'app-dashboard',
+
+  imports: [ButtonModule],
+
+  templateUrl: './dashboard.html',
+
+  styleUrl: './dashboard.css',
+
+})
+
+export class Dashboard implements OnInit {
+
+  protected readonly healthService = inject(HealthService);
+
+  ngOnInit(): void {
+
+    this.healthService.checkHealth();
+
+  }
+
+}
+```
+
+![](images/clipboard-2458870626.png)
+
+2.  Abre `dashboard.html` y muestra el estado en vivo de la conexión con el backend:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Panel Principal — Arrendo360</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-02: Núcleo de servicios HTTP, environments y contrato ApiResponse conectados.
+
+      </p>
+
+    </div>
+
+    <p-button
+
+      label="Verificar API"
+
+      icon="pi pi-refresh"
+
+      severity="success"
+
+      [loading]="healthService.checking()"
+
+      (onClick)="healthService.checkHealth()"
+
+    />
+
+  </div>
+
+  <!-- Tarjeta de estado de conexión con el Backend -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+
+    <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+
+      Estado de Conexión con Backend (:3002/api/health)
+
+    </h3>
+
+    <div class="flex items-center gap-3">
+
+      @if (healthService.isOnline()) {
+
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm border border-emerald-200">
+
+          <i class="pi pi-check-circle text-emerald-600"></i>
+
+          Backend Conectado (status: ok)
+
+        </span>
+
+      } @else {
+
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 font-medium text-sm border border-red-200">
+
+          <i class="pi pi-times-circle text-red-600"></i>
+
+          Backend Desconectado (Verifica que el backend corra en puerto 3002)
+
+        </span>
+
+      }
+
+    </div>
+
+  </div>
+
+</div>
+```
+
+#### ![](images/clipboard-2248779283.png)
+
+#### **Paso 6: Registrar la ruta `/dashboard` en `src/app/app.routes.ts`**
+
+Abre `frontend/src/app/app.routes.ts` y agrega la ruta `'dashboard'` antes de las redirecciones:
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard'; // Ajusta si quedó en ./features/dashboard/dashboard/dashboard
+
+export const routes: Routes = [
+
+  {
+
+    path: 'dashboard',
+
+    component: Dashboard,
+
+  },
+
+  {
+
+    path: '',
+
+    pathMatch: 'full',
+
+    redirectTo: 'dashboard',
+
+  },
+
+  {
+
+    path: '**',
+
+    redirectTo: 'dashboard',
+
+  },
+
+];
+```
+
+![](images/clipboard-1715798117.png)
