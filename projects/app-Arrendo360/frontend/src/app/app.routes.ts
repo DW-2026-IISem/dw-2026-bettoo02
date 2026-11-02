@@ -1,7 +1,10 @@
 import { Routes } from '@angular/router';
 import { Dashboard } from './features/dashboard/dashboard/dashboard';
 import { ClientsPage } from './features/clients/pages/clients-page';
+import { ProductTypesPage } from './features/product-types/pages/product-types-page';
+import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
 export const routes: Routes = [
+
   {
     path: 'dashboard',
     component: Dashboard,
@@ -10,6 +13,16 @@ export const routes: Routes = [
   {
     path: 'clients',
     component: ClientsPage,
+  },
+
+  {
+    path: 'propietarios',
+    component: PropietariosPage,
+  },
+
+  {
+    path: 'product-types',
+    component: ProductTypesPage,
   },
 
   {
@@ -22,5 +35,4 @@ export const routes: Routes = [
     path: '**',
     redirectTo: 'dashboard',
   },
-
 ];
