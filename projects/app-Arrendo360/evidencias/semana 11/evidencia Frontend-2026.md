@@ -4992,3 +4992,1875 @@ export const routes: Routes = [
 **PRODUCTOS**
 
 ![](images/clipboard-173189686.png)
+
+## **ISS-06 · Capa 2: Construir (Paso a paso manual)**
+
+Construyamos las dos vistas de este hito: **Contratos (`/api/contratos`)** y **Ventas (`/api/sales`)**.
+
+### **Parte A: Módulo `Contratos de Arrendamiento` (`/api/contratos`)**
+
+#### **Paso 1: Crear el modelo `src/app/features/contratos/models/contrato.model.ts`**
+
+Crea `frontend/src/app/features/contratos/models/contrato.model.ts` (espejo de `ContratoResponseDto`):
+
+``` typescript
+export interface Contrato {
+
+  id: number;
+
+  inmuebleId: number;
+
+  clienteId: number;
+
+  numero: string;
+
+  fechaInicio: string;
+
+  fechaFin: string;
+
+  valor: number;
+
+  estado: string;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreateContratoDto {
+
+  inmuebleId: number;
+
+  clienteId: number;
+
+  numero: string;
+
+  fechaInicio: string;
+
+  fechaFin: string;
+
+  valor: number;
+
+  estado?: string;
+
+}
+
+export type UpdateContratoDto = Partial<CreateContratoDto>;
+```
+
+#### ![](images/clipboard-918020493.png)
+
+#### **Paso 2: Crear el servicio `src/app/features/contratos/services/contratos.service.ts`**
+
+Crea `frontend/src/app/features/contratos/services/contratos.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { Contrato, CreateContratoDto, UpdateContratoDto } from '../models/contrato.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class ContratosService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/contratos`;
+
+  private readonly headers = new HttpHeaders({ 'x-user-role': 'ADMIN' });
+
+  readonly contratos = signal<Contrato[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadContratos(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Contrato>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const list = res.data?.items ?? res.data?.rows ?? [];
+
+          this.contratos.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreateContratoDto): Observable<ApiResponse<Contrato>> {
+
+    return this.http
+
+      .post<ApiResponse<Contrato>>(this.apiUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadContratos()));
+
+  }
+
+  update(id: number, dto: UpdateContratoDto): Observable<ApiResponse<Contrato>> {
+
+    return this.http
+
+      .patch<ApiResponse<Contrato>>(`${this.apiUrl}/${id}`, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadContratos()));
+
+  }
+
+}
+```
+
+#### ![](images/clipboard-2547946159.png)
+
+#### **Paso 3: Generar el componente `ContratosPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/contratos/pages/contratos-page --flat --skip-tests
+```
+
+![](images/clipboard-3397884980.png)
+
+1.  En `frontend/src/app/features/contratos/pages/contratos-page.ts`:
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { InputNumberModule } from 'primeng/inputnumber';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { ContratosService } from '../services/contratos.service';
+
+import { InmueblesService } from '../../inmuebles/services/inmuebles.service';
+
+import { ClientsService } from '../../clients/services/clients.service';
+
+import { Contrato } from '../models/contrato.model';
+
+@Component({
+
+  selector: 'app-contratos-page',
+
+  imports: [
+
+    DecimalPipe,
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    InputNumberModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './contratos-page.html',
+
+  styleUrl: './contratos-page.css',
+
+})
+
+export class ContratosPage implements OnInit {
+
+  protected readonly contratosService = inject(ContratosService);
+
+  protected readonly inmueblesService = inject(InmueblesService);
+
+  protected readonly clientsService = inject(ClientsService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingItem = signal<Contrato | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly estadosContrato = [
+
+    { label: 'ACTIVO', value: 'ACTIVO' },
+
+    { label: 'FINALIZADO', value: 'FINALIZADO' },
+
+    { label: 'CANCELADO', value: 'CANCELADO' },
+
+  ];
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    numero: ['', [Validators.required]],
+
+    inmuebleId: [0, [Validators.required, Validators.min(1)]],
+
+    clienteId: [0, [Validators.required, Validators.min(1)]],
+
+    fechaInicio: ['2026-01-01', [Validators.required]],
+
+    fechaFin: ['2026-12-31', [Validators.required]],
+
+    valor: [1500000, [Validators.required, Validators.min(1)]],
+
+    estado: ['ACTIVO', [Validators.required]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.contratosService.loadContratos();
+
+    this.inmueblesService.loadInmuebles();
+
+    this.clientsService.loadClients();
+
+  }
+
+  protected getInmuebleNombre(id: number): string {
+
+    return (
+
+      this.inmueblesService.inmuebles().find((i) => i.id === id)?.nombre ??
+
+      `Inmueble #${id}`
+
+    );
+
+  }
+
+  protected getClienteNombre(id: number): string {
+
+    return (
+
+      this.clientsService.clients().find((c) => c.id === id)?.nombre ??
+
+      `Cliente #${id}`
+
+    );
+
+  }
+
+  protected openNew(): void {
+
+    this.editingItem.set(null);
+
+    this.errorMsg.set(null);
+
+    const nextNum = `CTR-2026-00${this.contratosService.contratos().length + 1}`;
+
+    this.form.reset({
+
+      numero: nextNum,
+
+      inmuebleId: this.inmueblesService.inmuebles()[0]?.id ?? 0,
+
+      clienteId: this.clientsService.clients()[0]?.id ?? 0,
+
+      fechaInicio: '2026-01-01',
+
+      fechaFin: '2026-12-31',
+
+      valor: 1500000,
+
+      estado: 'ACTIVO',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(item: Contrato): void {
+
+    this.editingItem.set(item);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      numero: item.numero,
+
+      inmuebleId: item.inmuebleId,
+
+      clienteId: item.clienteId,
+
+      fechaInicio: item.fechaInicio?.slice(0, 10) ?? '2026-01-01',
+
+      fechaFin: item.fechaFin?.slice(0, 10) ?? '2026-12-31',
+
+      valor: Number(item.valor),
+
+      estado: item.estado,
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingItem();
+
+    const request$ = current
+
+      ? this.contratosService.update(current.id, payload)
+
+      : this.contratosService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al guardar el contrato.');
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-1051688446.png)
+
+2.  En `frontend/src/app/features/contratos/pages/contratos-page.html`:
+
+```         
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Contratos de Arrendamiento</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06: Vinculación jurídica entre Inmueble y Arrendatario con canon mensual (/api/contratos)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="contratosService.loadContratos()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Contrato"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="contratosService.contratos()"
+
+      [loading]="contratosService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>N° Contrato</th>
+
+          <th>Inmueble</th>
+
+          <th>Arrendatario</th>
+
+          <th>Vigencia</th>
+
+          <th>Canon Mensual</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-mono font-semibold text-slate-800">{{ item.numero }}</td>
+
+          <td>{{ getInmuebleNombre(item.inmuebleId) }}</td>
+
+          <td>{{ getClienteNombre(item.clienteId) }}</td>
+
+          <td class="text-xs text-slate-600">
+
+            {{ item.fechaInicio }} → {{ item.fechaFin }}
+
+          </td>
+
+          <td class="font-mono font-semibold text-emerald-700">
+
+            ${{ item.valor | number: '1.0-0' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.estado"
+
+              [severity]="item.estado === 'ACTIVO' ? 'success' : 'secondary'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="8" class="text-center py-8 text-slate-500">
+
+            No hay contratos registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Contrato' : 'Nuevo Contrato de Arrendamiento'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '36rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Número de Contrato *</label>
+
+          <input pInputText formControlName="numero" placeholder="Ej. CTR-2026-001" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Estado *</label>
+
+          <p-select
+
+            formControlName="estado"
+
+            [options]="estadosContrato"
+
+            optionLabel="label"
+
+            optionValue="value"
+
+            appendTo="body"
+
+          />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Inmueble a Arrendar *</label>
+
+        <p-select
+
+          formControlName="inmuebleId"
+
+          [options]="inmueblesService.inmuebles()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Arrendatario (Cliente) *</label>
+
+        <p-select
+
+          formControlName="clienteId"
+
+          [options]="clientsService.clients()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha Inicio *</label>
+
+          <input pInputText type="date" formControlName="fechaInicio" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha Fin *</label>
+
+          <input pInputText type="date" formControlName="fechaFin" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Canon Mensual *</label>
+
+          <p-inputnumber formControlName="valor" [min]="1" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+### ![](images/clipboard-2294746231.png)
+
+### **Parte B: Módulo `Ventas y Detalle Transaccional` (`/api/sales`)**
+
+#### **Paso 4: Crear el modelo `src/app/features/sales/models/sale.model.ts`**
+
+Crea `frontend/src/app/features/sales/models/sale.model.ts`:
+
+``` typescript
+export interface SaleItem {
+
+  id?: number;
+
+  product_id: number;
+
+  quantity: number;
+
+  unit_price?: number;
+
+  line_total?: number;
+
+  status?: 'active' | 'inactive';
+
+  product?: {
+
+    id: number;
+
+    name: string;
+
+    brand: string;
+
+  };
+
+}
+
+export interface Sale {
+
+  id: number;
+
+  sale_date: string;
+
+  subtotal: number;
+
+  tax: number;
+
+  discounts: number;
+
+  total: number;
+
+  client_id: number;
+
+  status: 'active' | 'inactive';
+
+  items?: SaleItem[];
+
+  client?: {
+
+    id: number;
+
+    nombre: string;
+
+  };
+
+}
+
+export interface CreateSaleDto {
+
+  client_id: number;
+
+  tax?: number;
+
+  discounts?: number;
+
+  items: {
+
+    product_id: number;
+
+    quantity: number;
+
+  }[];
+
+}
+```
+
+#### ![](images/clipboard-3322418640.png)
+
+#### **Paso 5: Crear el servicio `src/app/features/sales/services/sales.service.ts`**
+
+Crea `frontend/src/app/features/sales/services/sales.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse } from '../../../core/models/api-response.model';
+
+import { CreateSaleDto, Sale } from '../models/sale.model';
+
+interface SalesListPayload {
+
+  sales?: Sale[];
+
+  items?: Sale[];
+
+  data?: Sale[];
+
+  total: number;
+
+}
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class SalesService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/sales`;
+
+  readonly sales = signal<Sale[]>([]);
+
+  readonly selectedSale = signal<Sale | null>(null);
+
+  readonly loading = signal<boolean>(false);
+
+  loadSales(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<SalesListPayload | Sale[]>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const raw = res.data;
+
+          const list = Array.isArray(raw)
+
+            ? raw
+
+            : (raw?.sales ?? raw?.items ?? raw?.data ?? []);
+
+          this.sales.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  getById(id: number): Observable<ApiResponse<Sale>> {
+
+    return this.http.get<ApiResponse<Sale>>(`${this.apiUrl}/${id}`).pipe(
+
+      tap((res) => this.selectedSale.set(res.data)),
+
+    );
+
+  }
+
+  create(dto: CreateSaleDto): Observable<ApiResponse<Sale>> {
+
+    return this.http
+
+      .post<ApiResponse<Sale>>(this.apiUrl, dto)
+
+      .pipe(tap(() => this.loadSales()));
+
+  }
+
+  toggleStatus(sale: Sale): Observable<ApiResponse<Sale>> {
+
+    const action = sale.status === 'active' ? 'deactivate' : 'activate';
+
+    return this.http
+
+      .patch<ApiResponse<Sale>>(`${this.apiUrl}/${sale.id}/${action}`, {})
+
+      .pipe(tap(() => this.loadSales()));
+
+  }
+
+}
+```
+
+#### ![](images/clipboard-4281700755.png)
+
+#### **Paso 6: Generar el componente `SalesPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/sales/pages/sales-page --flat --skip-tests
+```
+
+![](images/clipboard-1992527849.png)
+
+1.  En `frontend/src/app/features/sales/pages/sales-page.ts`:
+
+```         
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+
+import { DatePipe, DecimalPipe } from '@angular/common';
+
+import { FormsModule } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputNumberModule } from 'primeng/inputnumber';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { SalesService } from '../services/sales.service';
+
+import { ClientsService } from '../../clients/services/clients.service';
+
+import { ProductsService } from '../../products/services/products.service';
+
+import { Sale } from '../models/sale.model';
+
+interface DraftLine {
+
+  product_id: number;
+
+  name: string;
+
+  price: number;
+
+  quantity: number;
+
+}
+
+@Component({
+
+  selector: 'app-sales-page',
+
+  imports: [
+
+    DatePipe,
+
+    DecimalPipe,
+
+    FormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputNumberModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './sales-page.html',
+
+  styleUrl: './sales-page.css',
+
+})
+
+export class SalesPage implements OnInit {
+
+  protected readonly salesService = inject(SalesService);
+
+  protected readonly clientsService = inject(ClientsService);
+
+  protected readonly productsService = inject(ProductsService);
+
+  protected readonly createDialogVisible = signal(false);
+
+  protected readonly detailDialogVisible = signal(false);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  // Estado del formulario Maestro-Detalle con Signals
+
+  protected readonly selectedClientId = signal<number>(0);
+
+  protected readonly selectedProductId = signal<number>(0);
+
+  protected readonly selectedQty = signal<number>(1);
+
+  protected readonly tax = signal<number>(0);
+
+  protected readonly discounts = signal<number>(0);
+
+  protected readonly draftLines = signal<DraftLine[]>([]);
+
+  protected readonly activeClients = computed(() =>
+
+    this.clientsService.clients().filter((c) => c.isActive),
+
+  );
+
+  protected readonly activeProducts = computed(() =>
+
+    this.productsService
+
+      .products()
+
+      .filter((p) => p.status === 'active' && p.quantity > 0),
+
+  );
+
+  protected readonly draftSubtotal = computed(() =>
+
+    this.draftLines().reduce((acc, l) => acc + l.price * l.quantity, 0),
+
+  );
+
+  protected readonly draftTotal = computed(() =>
+
+    Math.max(0, this.draftSubtotal() + (this.tax() || 0) - (this.discounts() || 0)),
+
+  );
+
+  ngOnInit(): void {
+
+    this.salesService.loadSales();
+
+    this.clientsService.loadClients();
+
+    this.productsService.loadProducts();
+
+  }
+
+  protected getClientName(clientId: number): string {
+
+    return (
+
+      this.clientsService.clients().find((c) => c.id === clientId)?.nombre ??
+
+      `Cliente #${clientId}`
+
+    );
+
+  }
+
+  protected openNewSale(): void {
+
+    this.errorMsg.set(null);
+
+    this.selectedClientId.set(this.activeClients()[0]?.id ?? 0);
+
+    this.selectedProductId.set(this.activeProducts()[0]?.id ?? 0);
+
+    this.selectedQty.set(1);
+
+    this.tax.set(0);
+
+    this.discounts.set(0);
+
+    this.draftLines.set([]);
+
+    this.createDialogVisible.set(true);
+
+  }
+
+  protected addLine(): void {
+
+    const prod = this.activeProducts().find(
+
+      (p) => p.id === this.selectedProductId(),
+
+    );
+
+    if (!prod || this.selectedQty() < 1) return;
+
+    const existing = this.draftLines().find((l) => l.product_id === prod.id);
+
+    if (existing) {
+
+      this.draftLines.update((lines) =>
+
+        lines.map((l) =>
+
+          l.product_id === prod.id
+
+            ? { ...l, quantity: l.quantity + this.selectedQty() }
+
+            : l,
+
+        ),
+
+      );
+
+    } else {
+
+      this.draftLines.update((lines) => [
+
+        ...lines,
+
+        {
+
+          product_id: prod.id,
+
+          name: prod.name,
+
+          price: Number(prod.price),
+
+          quantity: this.selectedQty(),
+
+        },
+
+      ]);
+
+    }
+
+  }
+
+  protected removeLine(productId: number): void {
+
+    this.draftLines.update((lines) =>
+
+      lines.filter((l) => l.product_id !== productId),
+
+    );
+
+  }
+
+  protected submitSale(): void {
+
+    if (!this.selectedClientId() || this.draftLines().length === 0) {
+
+      this.errorMsg.set('Seleccione un cliente y agregue al menos un producto.');
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    this.salesService
+
+      .create({
+
+        client_id: this.selectedClientId(),
+
+        tax: this.tax() || 0,
+
+        discounts: this.discounts() || 0,
+
+        items: this.draftLines().map((l) => ({
+
+          product_id: l.product_id,
+
+          quantity: l.quantity,
+
+        })),
+
+      })
+
+      .subscribe({
+
+        next: () => {
+
+          this.saving.set(false);
+
+          this.createDialogVisible.set(false);
+
+          this.productsService.loadProducts(); // Recarga el stock actualizado
+
+        },
+
+        error: (err) => {
+
+          this.saving.set(false);
+
+          this.errorMsg.set(err?.error?.message ?? 'Error al registrar la venta.');
+
+        },
+
+      });
+
+  }
+
+  protected viewDetail(sale: Sale): void {
+
+    this.salesService.getById(sale.id).subscribe({
+
+      next: () => this.detailDialogVisible.set(true),
+
+    });
+
+  }
+
+  protected onToggleStatus(sale: Sale): void {
+
+    this.salesService.toggleStatus(sale).subscribe({
+
+      next: () => this.productsService.loadProducts(),
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-2811510561.png)
+
+2.  En `frontend/src/app/features/sales/pages/sales-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Ventas y Transacciones (Maestro-Detalle)</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06: Registro transaccional con descuento automático de stock (/api/sales)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="salesService.loadSales()"
+
+      />
+
+      <p-button
+
+        label="Nueva Venta"
+
+        icon="pi pi-cart-plus"
+
+        severity="success"
+
+        (onClick)="openNewSale()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tabla de Ventas -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="salesService.sales()"
+
+      [loading]="salesService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Fecha</th>
+
+          <th>Cliente</th>
+
+          <th>Subtotal</th>
+
+          <th>Impuestos / Desc.</th>
+
+          <th>Total</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-sale>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ sale.id }}</td>
+
+          <td class="text-xs text-slate-600">{{ sale.sale_date | date: 'short' }}</td>
+
+          <td class="font-medium text-slate-800">{{ getClientName(sale.client_id) }}</td>
+
+          <td class="font-mono">${{ sale.subtotal | number: '1.0-2' }}</td>
+
+          <td class="text-xs text-slate-500">
+
+            +${{ sale.tax | number: '1.0-2' }} / -${{ sale.discounts | number: '1.0-2' }}
+
+          </td>
+
+          <td class="font-mono font-bold text-emerald-700">
+
+            ${{ sale.total | number: '1.0-2' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="sale.status === 'active' ? 'Activa' : 'Anulada'"
+
+              [severity]="sale.status === 'active' ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right space-x-1">
+
+            <p-button
+
+              icon="pi pi-eye"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Ver líneas de detalle"
+
+              (onClick)="viewDetail(sale)"
+
+            />
+
+            <p-button
+
+              [icon]="sale.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              [severity]="sale.status === 'active' ? 'danger' : 'success'"
+
+              [title]="sale.status === 'active' ? 'Anular y restaurar stock' : 'Reactivar'"
+
+              (onClick)="onToggleStatus(sale)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="8" class="text-center py-8 text-slate-500">
+
+            No hay ventas registradas aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <!-- Modal Crear Venta Maestro-Detalle -->
+
+  <p-dialog
+
+    header="Registrar Nueva Venta Transaccional"
+
+    [visible]="createDialogVisible()"
+
+    (visibleChange)="createDialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '42rem' }"
+
+  >
+
+    <div class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <!-- Cabecera: Cliente -->
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Cliente Comprador (Activo) *</label>
+
+        <p-select
+
+          [ngModel]="selectedClientId()"
+
+          (ngModelChange)="selectedClientId.set($event)"
+
+          [options]="activeClients()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <!-- Agregar Línea de Producto -->
+
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+
+          Agregar Productos al Detalle
+
+        </p>
+
+        <div class="grid grid-cols-12 gap-3 items-end">
+
+          <div class="col-span-7 flex flex-col gap-1">
+
+            <label class="text-xs text-slate-600">Producto con Stock</label>
+
+            <p-select
+
+              [ngModel]="selectedProductId()"
+
+              (ngModelChange)="selectedProductId.set($event)"
+
+              [options]="activeProducts()"
+
+              optionLabel="name"
+
+              optionValue="id"
+
+              appendTo="body"
+
+            />
+
+          </div>
+
+          <div class="col-span-3 flex flex-col gap-1">
+
+            <label class="text-xs text-slate-600">Cantidad</label>
+
+            <p-inputnumber
+
+              [ngModel]="selectedQty()"
+
+              (ngModelChange)="selectedQty.set($event)"
+
+              [min]="1"
+
+            />
+
+          </div>
+
+          <div class="col-span-2">
+
+            <p-button
+
+              label="Añadir"
+
+              icon="pi pi-plus"
+
+              severity="info"
+
+              (onClick)="addLine()"
+
+            />
+
+          </div>
+
+        </div>
+
+        <!-- Líneas agregadas -->
+
+        @if (draftLines().length > 0) {
+
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden mt-2">
+
+            <table class="w-full text-sm">
+
+              <thead class="bg-slate-100 text-xs text-slate-600">
+
+                <tr>
+
+                  <th class="text-left p-2">Producto</th>
+
+                  <th class="text-right p-2">Precio Unit.</th>
+
+                  <th class="text-center p-2">Cant.</th>
+
+                  <th class="text-right p-2">Subtotal</th>
+
+                  <th class="p-2"></th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                @for (line of draftLines(); track line.product_id) {
+
+                  <tr class="border-t border-slate-100">
+
+                    <td class="p-2 font-medium">{{ line.name }}</td>
+
+                    <td class="p-2 text-right font-mono">${{ line.price | number: '1.0-2' }}</td>
+
+                    <td class="p-2 text-center font-semibold">{{ line.quantity }}</td>
+
+                    <td class="p-2 text-right font-mono font-semibold">
+
+                      ${{ line.price * line.quantity | number: '1.0-2' }}
+
+                    </td>
+
+                    <td class="p-2 text-right">
+
+                      <p-button
+
+                        icon="pi pi-trash"
+
+                        severity="danger"
+
+                        [text]="true"
+
+                        [rounded]="true"
+
+                        (onClick)="removeLine(line.product_id)"
+
+                      />
+
+                    </td>
+
+                  </tr>
+
+                }
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        }
+
+      </div>
+
+      <!-- Impuestos, Descuentos y Total Calculado -->
+
+      <div class="grid grid-cols-3 gap-4 items-center pt-2">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Impuestos ($)</label>
+
+          <p-inputnumber [ngModel]="tax()" (ngModelChange)="tax.set($event)" [min]="0" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Descuentos ($)</label>
+
+          <p-inputnumber [ngModel]="discounts()" (ngModelChange)="discounts.set($event)" [min]="0" />
+
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-right">
+
+          <p class="text-xs text-emerald-700 font-medium">Total Estimado</p>
+
+          <p class="text-lg font-bold font-mono text-emerald-800">
+
+            ${{ draftTotal() | number: '1.0-2' }}
+
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="createDialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Confirmar Venta"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          [loading]="saving()"
+
+          (onClick)="submitSale()"
+
+        />
+
+      </div>
+
+    </div>
+
+  </p-dialog>
+
+  <!-- Modal Ver Detalle de Venta -->
+
+  <p-dialog
+
+    header="Detalle de Venta #{{ salesService.selectedSale()?.id }}"
+
+    [visible]="detailDialogVisible()"
+
+    (visibleChange)="detailDialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '36rem' }"
+
+  >
+
+    @if (salesService.selectedSale(); as detail) {
+
+      <div class="space-y-4">
+
+        <div class="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-3 rounded-lg border border-slate-200">
+
+          <div><span class="text-slate-500">Cliente:</span> <strong>{{ getClientName(detail.client_id) }}</strong></div>
+
+          <div><span class="text-slate-500">Estado:</span> <strong>{{ detail.status }}</strong></div>
+
+          <div><span class="text-slate-500">Subtotal:</span> ${{ detail.subtotal | number: '1.0-2' }}</div>
+
+          <div><span class="text-slate-500">Total:</span> <strong class="text-emerald-700">${{ detail.total | number: '1.0-2' }}</strong></div>
+
+        </div>
+
+        <table class="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+
+          <thead class="bg-slate-100 text-xs text-slate-600">
+
+            <tr>
+
+              <th class="text-left p-2">Producto ID</th>
+
+              <th class="text-center p-2">Cant.</th>
+
+              <th class="text-right p-2">Precio Unit.</th>
+
+              <th class="text-right p-2">Total Línea</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            @for (line of detail.items ?? []; track $index) {
+
+              <tr class="border-t border-slate-100">
+
+                <td class="p-2">{{ line.product?.name || ('Producto #' + line.product_id) }}</td>
+
+                <td class="p-2 text-center">{{ line.quantity }}</td>
+
+                <td class="p-2 text-right font-mono">${{ line.unit_price | number: '1.0-2' }}</td>
+
+                <td class="p-2 text-right font-mono font-semibold">${{ line.line_total | number: '1.0-2' }}</td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    }
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-2429590726.png)
+
+#### **Paso 7: Registrar `/contratos` y `/sales` en `src/app/app.routes.ts`**
+
+Abre `frontend/src/app/app.routes.ts` y agrega las dos rutas nuevas:
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard/dashboard';
+
+import { ClientsPage } from './features/clients/pages/clients-page';
+
+import { ProductTypesPage } from './features/product-types/pages/product-types-page';
+
+import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
+
+import { InmueblesPage } from './features/inmuebles/pages/inmuebles-page';
+
+import { ProductsPage } from './features/products/pages/products-page';
+
+import { ContratosPage } from './features/contratos/pages/contratos-page';
+
+import { SalesPage } from './features/sales/pages/sales-page';
+
+export const routes: Routes = [
+
+  { path: 'dashboard', component: Dashboard },
+
+  { path: 'clients', component: ClientsPage },
+
+  { path: 'propietarios', component: PropietariosPage },
+
+  { path: 'inmuebles', component: InmueblesPage },
+
+  { path: 'contratos', component: ContratosPage },
+
+  { path: 'product-types', component: ProductTypesPage },
+
+  { path: 'products', component: ProductsPage },
+
+  { path: 'sales', component: SalesPage },
+
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+
+  { path: '**', redirectTo: 'dashboard' },
+
+];
+```
+
+![](images/clipboard-1876304493.png)
+
+**CONTRATOS**
+
+![](images/clipboard-1299038141.png)
+
+**VENTAS**
+
+![](images/clipboard-1830085059.png)

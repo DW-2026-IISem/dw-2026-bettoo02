@@ -1,0 +1,329 @@
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Contratos de Arrendamiento</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06: Vinculación jurídica entre Inmueble y Arrendatario con canon mensual (/api/contratos)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="contratosService.loadContratos()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Contrato"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="contratosService.contratos()"
+
+      [loading]="contratosService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>N° Contrato</th>
+
+          <th>Inmueble</th>
+
+          <th>Arrendatario</th>
+
+          <th>Vigencia</th>
+
+          <th>Canon Mensual</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-mono font-semibold text-slate-800">{{ item.numero }}</td>
+
+          <td>{{ getInmuebleNombre(item.inmuebleId) }}</td>
+
+          <td>{{ getClienteNombre(item.clienteId) }}</td>
+
+          <td class="text-xs text-slate-600">
+
+            {{ item.fechaInicio }} → {{ item.fechaFin }}
+
+          </td>
+
+          <td class="font-mono font-semibold text-emerald-700">
+
+            ${{ item.valor | number: '1.0-0' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.estado"
+
+              [severity]="item.estado === 'ACTIVO' ? 'success' : 'secondary'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="8" class="text-center py-8 text-slate-500">
+
+            No hay contratos registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Contrato' : 'Nuevo Contrato de Arrendamiento'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '36rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Número de Contrato *</label>
+
+          <input pInputText formControlName="numero" placeholder="Ej. CTR-2026-001" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Estado *</label>
+
+          <p-select
+
+            formControlName="estado"
+
+            [options]="estadosContrato"
+
+            optionLabel="label"
+
+            optionValue="value"
+
+            appendTo="body"
+
+          />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Inmueble a Arrendar *</label>
+
+        <p-select
+
+          formControlName="inmuebleId"
+
+          [options]="inmueblesService.inmuebles()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Arrendatario (Cliente) *</label>
+
+        <p-select
+
+          formControlName="clienteId"
+
+          [options]="clientsService.clients()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha Inicio *</label>
+
+          <input pInputText type="date" formControlName="fechaInicio" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha Fin *</label>
+
+          <input pInputText type="date" formControlName="fechaFin" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Canon Mensual *</label>
+
+          <p-inputnumber formControlName="valor" [min]="1" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>

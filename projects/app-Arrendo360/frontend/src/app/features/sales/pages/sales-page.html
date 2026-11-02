@@ -1,0 +1,529 @@
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Ventas y Transacciones (Maestro-Detalle)</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06: Registro transaccional con descuento automático de stock (/api/sales)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="salesService.loadSales()"
+
+      />
+
+      <p-button
+
+        label="Nueva Venta"
+
+        icon="pi pi-cart-plus"
+
+        severity="success"
+
+        (onClick)="openNewSale()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tabla de Ventas -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="salesService.sales()"
+
+      [loading]="salesService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Fecha</th>
+
+          <th>Cliente</th>
+
+          <th>Subtotal</th>
+
+          <th>Impuestos / Desc.</th>
+
+          <th>Total</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-sale>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ sale.id }}</td>
+
+          <td class="text-xs text-slate-600">{{ sale.sale_date | date: 'short' }}</td>
+
+          <td class="font-medium text-slate-800">{{ getClientName(sale.client_id) }}</td>
+
+          <td class="font-mono">${{ sale.subtotal | number: '1.0-2' }}</td>
+
+          <td class="text-xs text-slate-500">
+
+            +${{ sale.tax | number: '1.0-2' }} / -${{ sale.discounts | number: '1.0-2' }}
+
+          </td>
+
+          <td class="font-mono font-bold text-emerald-700">
+
+            ${{ sale.total | number: '1.0-2' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="sale.status === 'active' ? 'Activa' : 'Anulada'"
+
+              [severity]="sale.status === 'active' ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right space-x-1">
+
+            <p-button
+
+              icon="pi pi-eye"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Ver líneas de detalle"
+
+              (onClick)="viewDetail(sale)"
+
+            />
+
+            <p-button
+
+              [icon]="sale.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              [severity]="sale.status === 'active' ? 'danger' : 'success'"
+
+              [title]="sale.status === 'active' ? 'Anular y restaurar stock' : 'Reactivar'"
+
+              (onClick)="onToggleStatus(sale)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="8" class="text-center py-8 text-slate-500">
+
+            No hay ventas registradas aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <!-- Modal Crear Venta Maestro-Detalle -->
+
+  <p-dialog
+
+    header="Registrar Nueva Venta Transaccional"
+
+    [visible]="createDialogVisible()"
+
+    (visibleChange)="createDialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '42rem' }"
+
+  >
+
+    <div class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <!-- Cabecera: Cliente -->
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Cliente Comprador (Activo) *</label>
+
+        <p-select
+
+          [ngModel]="selectedClientId()"
+
+          (ngModelChange)="selectedClientId.set($event)"
+
+          [options]="activeClients()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <!-- Agregar Línea de Producto -->
+
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+
+          Agregar Productos al Detalle
+
+        </p>
+
+        <div class="grid grid-cols-12 gap-3 items-end">
+
+          <div class="col-span-7 flex flex-col gap-1">
+
+            <label class="text-xs text-slate-600">Producto con Stock</label>
+
+            <p-select
+
+              [ngModel]="selectedProductId()"
+
+              (ngModelChange)="selectedProductId.set($event)"
+
+              [options]="activeProducts()"
+
+              optionLabel="name"
+
+              optionValue="id"
+
+              appendTo="body"
+
+            />
+
+          </div>
+
+          <div class="col-span-3 flex flex-col gap-1">
+
+            <label class="text-xs text-slate-600">Cantidad</label>
+
+            <p-inputnumber
+
+              [ngModel]="selectedQty()"
+
+              (ngModelChange)="selectedQty.set($event)"
+
+              [min]="1"
+
+            />
+
+          </div>
+
+          <div class="col-span-2">
+
+            <p-button
+
+              label="Añadir"
+
+              icon="pi pi-plus"
+
+              severity="info"
+
+              (onClick)="addLine()"
+
+            />
+
+          </div>
+
+        </div>
+
+        <!-- Líneas agregadas -->
+
+        @if (draftLines().length > 0) {
+
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden mt-2">
+
+            <table class="w-full text-sm">
+
+              <thead class="bg-slate-100 text-xs text-slate-600">
+
+                <tr>
+
+                  <th class="text-left p-2">Producto</th>
+
+                  <th class="text-right p-2">Precio Unit.</th>
+
+                  <th class="text-center p-2">Cant.</th>
+
+                  <th class="text-right p-2">Subtotal</th>
+
+                  <th class="p-2"></th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                @for (line of draftLines(); track line.product_id) {
+
+                  <tr class="border-t border-slate-100">
+
+                    <td class="p-2 font-medium">{{ line.name }}</td>
+
+                    <td class="p-2 text-right font-mono">${{ line.price | number: '1.0-2' }}</td>
+
+                    <td class="p-2 text-center font-semibold">{{ line.quantity }}</td>
+
+                    <td class="p-2 text-right font-mono font-semibold">
+
+                      ${{ line.price * line.quantity | number: '1.0-2' }}
+
+                    </td>
+
+                    <td class="p-2 text-right">
+
+                      <p-button
+
+                        icon="pi pi-trash"
+
+                        severity="danger"
+
+                        [text]="true"
+
+                        [rounded]="true"
+
+                        (onClick)="removeLine(line.product_id)"
+
+                      />
+
+                    </td>
+
+                  </tr>
+
+                }
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        }
+
+      </div>
+
+      <!-- Impuestos, Descuentos y Total Calculado -->
+
+      <div class="grid grid-cols-3 gap-4 items-center pt-2">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Impuestos ($)</label>
+
+          <p-inputnumber [ngModel]="tax()" (ngModelChange)="tax.set($event)" [min]="0" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Descuentos ($)</label>
+
+          <p-inputnumber [ngModel]="discounts()" (ngModelChange)="discounts.set($event)" [min]="0" />
+
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-right">
+
+          <p class="text-xs text-emerald-700 font-medium">Total Estimado</p>
+
+          <p class="text-lg font-bold font-mono text-emerald-800">
+
+            ${{ draftTotal() | number: '1.0-2' }}
+
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="createDialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Confirmar Venta"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          [loading]="saving()"
+
+          (onClick)="submitSale()"
+
+        />
+
+      </div>
+
+    </div>
+
+  </p-dialog>
+
+  <!-- Modal Ver Detalle de Venta -->
+
+  <p-dialog
+
+    header="Detalle de Venta #{{ salesService.selectedSale()?.id }}"
+
+    [visible]="detailDialogVisible()"
+
+    (visibleChange)="detailDialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '36rem' }"
+
+  >
+
+    @if (salesService.selectedSale(); as detail) {
+
+      <div class="space-y-4">
+
+        <div class="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-3 rounded-lg border border-slate-200">
+
+          <div><span class="text-slate-500">Cliente:</span> <strong>{{ getClientName(detail.client_id) }}</strong></div>
+
+          <div><span class="text-slate-500">Estado:</span> <strong>{{ detail.status }}</strong></div>
+
+          <div><span class="text-slate-500">Subtotal:</span> ${{ detail.subtotal | number: '1.0-2' }}</div>
+
+          <div><span class="text-slate-500">Total:</span> <strong class="text-emerald-700">${{ detail.total | number: '1.0-2' }}</strong></div>
+
+        </div>
+
+        <table class="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+
+          <thead class="bg-slate-100 text-xs text-slate-600">
+
+            <tr>
+
+              <th class="text-left p-2">Producto ID</th>
+
+              <th class="text-center p-2">Cant.</th>
+
+              <th class="text-right p-2">Precio Unit.</th>
+
+              <th class="text-right p-2">Total Línea</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            @for (line of detail.items ?? []; track $index) {
+
+              <tr class="border-t border-slate-100">
+
+                <td class="p-2">{{ line.product?.name || ('Producto #' + line.product_id) }}</td>
+
+                <td class="p-2 text-center">{{ line.quantity }}</td>
+
+                <td class="p-2 text-right font-mono">${{ line.unit_price | number: '1.0-2' }}</td>
+
+                <td class="p-2 text-right font-mono font-semibold">${{ line.line_total | number: '1.0-2' }}</td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    }
+
+  </p-dialog>
+
+</div>

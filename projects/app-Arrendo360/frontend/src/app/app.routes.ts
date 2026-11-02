@@ -5,6 +5,8 @@ import { ProductTypesPage } from './features/product-types/pages/product-types-p
 import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
 import { InmueblesPage } from './features/inmuebles/pages/inmuebles-page';
 import { ProductsPage } from './features/products/pages/products-page';
+import { ContratosPage } from './features/contratos/pages/contratos-page';
+import { SalesPage } from './features/sales/pages/sales-page';
 
 export const routes: Routes = [
   { path: 'dashboard', component: Dashboard },
@@ -13,6 +15,8 @@ export const routes: Routes = [
   { path: 'inmuebles', component: InmueblesPage },
   { path: 'product-types', component: ProductTypesPage },
   { path: 'products', component: ProductsPage },
+  { path: 'contratos', component: ContratosPage },
+  { path: 'sales', component: SalesPage },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];
