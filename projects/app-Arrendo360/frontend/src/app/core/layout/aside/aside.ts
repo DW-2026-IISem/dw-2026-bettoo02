@@ -77,12 +77,25 @@ export class Aside {
       title: 'Catálogo Comercial',
 
       items: [
-
+        
         { label: 'Tipos de Producto', icon: 'pi pi-tags', route: '/product-types' },
 
         { label: 'Productos', icon: 'pi pi-box', route: '/products' },
 
         { label: 'Ventas', icon: 'pi pi-shopping-cart', route: '/sales' },
+
+      ],
+    },
+
+    {
+
+      title: 'Seguridad y RBAC (Fase II)',
+
+      items: [
+
+        { label: 'Sesión y JWT (/me)', icon: 'pi pi-shield', route: '/login' },
+
+        { label: 'Roles, Permisos y RTR', icon: 'pi pi-lock', route: '/rbac' },
 
       ],
 

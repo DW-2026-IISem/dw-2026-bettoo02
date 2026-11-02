@@ -8,17 +8,26 @@ import { ProductsPage } from './features/products/pages/products-page';
 import { ContratosPage } from './features/contratos/pages/contratos-page';
 import { SalesPage } from './features/sales/pages/sales-page';
 import { CobrosPage } from './features/cobros/pages/cobros-page';
- 
+import { LiquidacionesPage } from './features/liquidaciones/pages/liquidaciones-page';
+import { MantenimientoPage } from './features/mantenimiento/pages/mantenimiento-page';
+import { LoginPage } from './features/auth/pages/login-page';
+import { RbacPage } from './features/auth/pages/rbac-page';
+
 export const routes: Routes = [
   { path: 'dashboard', component: Dashboard },
   { path: 'clients', component: ClientsPage },
   { path: 'propietarios', component: PropietariosPage },
   { path: 'inmuebles', component: InmueblesPage },
+  { path: 'contratos', component: ContratosPage },
+  { path: 'cobros', component: CobrosPage },
+  { path: 'liquidaciones', component: LiquidacionesPage },
+  { path: 'mantenimiento', component: MantenimientoPage },
   { path: 'product-types', component: ProductTypesPage },
   { path: 'products', component: ProductsPage },
-  { path: 'contratos', component: ContratosPage },
+
   { path: 'sales', component: SalesPage },
-   { path: 'cobros', component: CobrosPage },
+  { path: 'login', component: LoginPage },
+  { path: 'rbac', component: RbacPage },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];

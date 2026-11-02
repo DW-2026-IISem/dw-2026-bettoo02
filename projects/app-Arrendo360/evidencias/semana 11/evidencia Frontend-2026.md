@@ -7968,3 +7968,2379 @@ import { CobrosPage } from './features/cobros/pages/cobros-page';
 ![](images/clipboard-1362092256.png)
 
 ![](images/clipboard-3981024562.png)
+
+## Ahora entramos a la **Fase II: Seguridad, Autenticación JWT y RBAC — ISS-08: Autenticación JWT, Login, Registro, `/me`, Logout e Interceptor HTTP**
+
+### **ISS-08 · Capa 1: Aprender (Cómo funciona el ciclo de sesión JWT en Angular 22 + Tu Backend)**
+
+En el **ISS-08** construiremos **4 piezas clave** en el frontend:
+
+1.  **`AuthService` con Signals (`currentUser`, `isAuthenticated`, `userRole`):** Almacena los tokens en `localStorage` y mantiene el estado reactivo del usuario en toda la app.
+
+2.  **Interceptor Funcional HTTP (`authInterceptor`):** En lugar de poner headers manuales en cada servicio, este interceptor se registra en `app.config.ts` e inyecta automáticamente `Authorization: Bearer <token>` y `x-user-role: <role>` en **todas** las peticiones HTTP hacia `localhost:3002`.
+
+3.  **Página de Login y Registro (`/login`):** Permite iniciar sesión o crear un usuario (con selector de rol: `ADMIN`, `ASESOR`, `CARTERA`, `MANTENIMIENTO`, `PROPIETARIO_CONSULTA`).
+
+4.  **Header Reactivo:** Muestra el nombre real y el rol del usuario autenticado en la barra superior, junto con el botón de **Cerrar Sesión** (o **Iniciar Sesión**).
+
+### **ISS-08 · Capa 2**
+
+Sigue estos **6 pasos**:
+
+#### **Paso 1: Crear el modelo `src/app/core/auth/models/auth.model.ts`**
+
+Crea la carpeta `frontend/src/app/core/auth/models/` y dentro el archivo `auth.model.ts` (espejo de `AuthResponseDto`):
+
+``` typescript
+export type UserRole =
+
+  | 'ADMIN'
+
+  | 'ASESOR'
+
+  | 'CARTERA'
+
+  | 'MANTENIMIENTO'
+
+  | 'PROPIETARIO_CONSULTA';
+
+export interface UserProfile {
+
+  id: number;
+
+  nombre: string;
+
+  email: string;
+
+  role: UserRole;
+
+  isActive: boolean;
+
+}
+
+export interface AuthResponse {
+
+  accessToken: string;
+
+  refreshToken?: string;
+
+  user: UserProfile;
+
+}
+
+export interface LoginDto {
+
+  email: string;
+
+  password: string;
+
+}
+
+export interface RegisterDto {
+
+  nombre: string;
+
+  email: string;
+
+  password: string;
+
+  role?: UserRole;
+
+}
+```
+
+![](images/clipboard-1145212001.png)
+
+#### **Paso 2: Crear el servicio central `src/app/core/auth/services/auth.service.ts`**
+
+Crea la carpeta `frontend/src/app/core/auth/services/` y dentro el archivo `auth.service.ts`:
+
+``` typescript
+import { Injectable, computed, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { Router } from '@angular/router';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse } from '../../models/api-response.model';
+
+import {
+
+  AuthResponse,
+
+  LoginDto,
+
+  RegisterDto,
+
+  UserProfile,
+
+  UserRole,
+
+} from '../models/auth.model';
+
+const ACCESS_TOKEN_KEY = 'arrendo360_access_token';
+
+const REFRESH_TOKEN_KEY = 'arrendo360_refresh_token';
+
+const USER_KEY = 'arrendo360_user';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class AuthService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly router = inject(Router);
+
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
+
+  // Signals de estado de sesión
+
+  readonly currentUser = signal<UserProfile | null>(this.loadStoredUser());
+
+  readonly accessToken = signal<string | null>(
+
+    localStorage.getItem(ACCESS_TOKEN_KEY),
+
+  );
+
+  readonly refreshToken = signal<string | null>(
+
+    localStorage.getItem(REFRESH_TOKEN_KEY),
+
+  );
+
+  // Signals derivados (computed)
+
+  readonly isAuthenticated = computed(() => !!this.accessToken() && !!this.currentUser());
+
+  readonly userRole = computed<UserRole>(() => this.currentUser()?.role ?? 'ADMIN');
+
+  private loadStoredUser(): UserProfile | null {
+
+    try {
+
+      const raw = localStorage.getItem(USER_KEY);
+
+      return raw ? (JSON.parse(raw) as UserProfile) : null;
+
+    } catch {
+
+      return null;
+
+    }
+
+  }
+
+  private saveSession(auth: AuthResponse): void {
+
+    localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
+
+    this.accessToken.set(auth.accessToken);
+
+    if (auth.refreshToken) {
+
+      localStorage.setItem(REFRESH_TOKEN_KEY, auth.refreshToken);
+
+      this.refreshToken.set(auth.refreshToken);
+
+    }
+
+    localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
+
+    this.currentUser.set(auth.user);
+
+  }
+
+  clearSession(): void {
+
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+
+    localStorage.removeItem(USER_KEY);
+
+    this.accessToken.set(null);
+
+    this.refreshToken.set(null);
+
+    this.currentUser.set(null);
+
+  }
+
+  login(dto: LoginDto): Observable<ApiResponse<AuthResponse>> {
+
+    return this.http
+
+      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/login`, dto)
+
+      .pipe(tap((res) => this.saveSession(res.data)));
+
+  }
+
+  register(dto: RegisterDto): Observable<ApiResponse<AuthResponse>> {
+
+    return this.http
+
+      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/register`, dto)
+
+      .pipe(tap((res) => this.saveSession(res.data)));
+
+  }
+
+  fetchMe(): Observable<ApiResponse<UserProfile>> {
+
+    return this.http.get<ApiResponse<UserProfile>>(`${this.apiUrl}/me`).pipe(
+
+      tap((res) => {
+
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data));
+
+        this.currentUser.set(res.data);
+
+      }),
+
+    );
+
+  }
+
+  rotateRefreshToken(): Observable<ApiResponse<AuthResponse>> {
+
+    const token = this.refreshToken();
+
+    return this.http
+
+      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/refresh`, {
+
+        refreshToken: token,
+
+      })
+
+      .pipe(tap((res) => this.saveSession(res.data)));
+
+  }
+
+  logout(): void {
+
+    const refreshToken = this.refreshToken();
+
+    if (this.accessToken()) {
+
+      this.http
+
+        .post(`${this.apiUrl}/logout`, { refreshToken })
+
+        .subscribe({
+
+          next: () => this.finishLogout(),
+
+          error: () => this.finishLogout(),
+
+        });
+
+    } else {
+
+      this.finishLogout();
+
+    }
+
+  }
+
+  private finishLogout(): void {
+
+    this.clearSession();
+
+    void this.router.navigate(['/login']);
+
+  }
+
+  hasRole(allowedRoles: UserRole[]): boolean {
+
+    const current = this.currentUser();
+
+    if (!current) return false;
+
+    return allowedRoles.includes(current.role);
+
+  }
+
+}
+```
+
+![](images/clipboard-3972943580.png)
+
+#### **Paso 3: Crear el Interceptor HTTP (`src/app/core/auth/interceptors/auth.interceptor.ts`)**
+
+Crea la carpeta `frontend/src/app/core/auth/interceptors/` y dentro el archivo `auth.interceptor.ts`. Este interceptor adjunta automáticamente el token JWT (`Authorization: Bearer ...`) y el rol activo (`x-user-role`) a cada petición que salga hacia el backend:
+
+``` typescript
+import { HttpInterceptorFn } from '@angular/common/http';
+
+import { inject } from '@angular/core';
+
+import { AuthService } from '../services/auth.service';
+
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+
+  const authService = inject(AuthService);
+
+  const token = authService.accessToken();
+
+  const role = authService.currentUser()?.role;
+
+  const headers: Record<string, string> = {};
+
+  if (token) {
+
+    headers['Authorization'] = `Bearer ${token}`;
+
+  }
+
+  if (role) {
+
+    headers['x-user-role'] = role;
+
+  } else if (!req.headers.has('x-user-role')) {
+
+    headers['x-user-role'] = 'ADMIN';
+
+  }
+
+  if (Object.keys(headers).length > 0) {
+
+    req = req.clone({ setHeaders: headers });
+
+  }
+
+  return next(req);
+
+};
+```
+
+![](images/clipboard-890279132.png)
+
+Y regístralo en `frontend/src/app/app.config.ts` cambiando `provideHttpClient(withFetch())` por `provideHttpClient(withFetch(), withInterceptors([authInterceptor]))`:
+
+``` typescript
+import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+
+import { provideRouter } from '@angular/router';
+
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+
+import { providePrimeNG } from 'primeng/config';
+
+import Aura from '@primeuix/themes/aura';
+
+import { routes } from './app.routes';
+
+import { authInterceptor } from './core/auth/interceptors/auth.interceptor';
+
+export const appConfig: ApplicationConfig = {
+
+  providers: [
+
+    provideZonelessChangeDetection(),
+
+    provideRouter(routes),
+
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+
+    providePrimeNG({
+
+      ripple: true,
+
+      theme: {
+
+        preset: Aura,
+
+        options: {
+
+          darkModeSelector: '.app-dark',
+
+          cssLayer: {
+
+            name: 'primeng',
+
+            order: 'tailwind-base, primeng, tailwind-utilities',
+
+          },
+
+        },
+
+      },
+
+    }),
+
+  ],
+
+};
+```
+
+![](images/clipboard-852597970.png)
+
+#### **Paso 4: Generar la página de Login / Registro (`LoginPage`)**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/auth/pages/login-page --flat --skip-tests
+```
+
+![](images/clipboard-1210302033.png)
+
+1.  En `frontend/src/app/features/auth/pages/login-page.ts`:
+
+``` typescript
+import { Component, inject, signal } from '@angular/core';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { Router } from '@angular/router';
+
+import { ButtonModule } from 'primeng/button';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { AuthService } from '../../../core/auth/services/auth.service';
+
+import { UserRole } from '../../../core/auth/models/auth.model';
+
+@Component({
+
+  selector: 'app-login-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    ButtonModule,
+
+    InputTextModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './login-page.html',
+
+  styleUrl: './login-page.css',
+
+})
+
+export class LoginPage {
+
+  protected readonly authService = inject(AuthService);
+
+  private readonly fb = inject(FormBuilder);
+
+  private readonly router = inject(Router);
+
+  protected readonly mode = signal<'login' | 'register'>('login');
+
+  protected readonly loading = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly successMsg = signal<string | null>(null);
+
+  protected readonly rolesOptions: { label: string; value: UserRole }[] = [
+
+    { label: 'Administrador General (ADMIN)', value: 'ADMIN' },
+
+    { label: 'Asesor Inmobiliario (ASESOR)', value: 'ASESOR' },
+
+    { label: 'Gestor de Cartera (CARTERA)', value: 'CARTERA' },
+
+    { label: 'Mantenimiento (MANTENIMIENTO)', value: 'MANTENIMIENTO' },
+
+    { label: 'Propietario Solo Consulta (PROPIETARIO_CONSULTA)', value: 'PROPIETARIO_CONSULTA' },
+
+  ];
+
+  protected readonly loginForm = this.fb.nonNullable.group({
+
+    email: ['admin.master@arrendo360.com', [Validators.required, Validators.email]],
+
+    password: ['PasswordSegura2026*', [Validators.required, Validators.minLength(6)]],
+
+  });
+
+  protected readonly registerForm = this.fb.nonNullable.group({
+
+    nombre: ['Alberto Ortiz', [Validators.required, Validators.minLength(2)]],
+
+    email: ['betto@arrendo360.com', [Validators.required, Validators.email]],
+
+    password: ['PasswordSegura2026*', [Validators.required, Validators.minLength(6)]],
+
+    role: ['ADMIN' as UserRole, [Validators.required]],
+
+  });
+
+  protected onLogin(): void {
+
+    if (this.loginForm.invalid) return;
+
+    this.loading.set(true);
+
+    this.errorMsg.set(null);
+
+    this.authService.login(this.loginForm.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.loading.set(false);
+
+        void this.router.navigate(['/dashboard']);
+
+      },
+
+      error: (err) => {
+
+        this.loading.set(false);
+
+        this.errorMsg.set(
+
+          err?.error?.message ?? 'Credenciales inválidas. Puedes registrar la cuenta en la pestaña Registro.',
+
+        );
+
+      },
+
+    });
+
+  }
+
+  protected onRegister(): void {
+
+    if (this.registerForm.invalid) return;
+
+    this.loading.set(true);
+
+    this.errorMsg.set(null);
+
+    this.authService.register(this.registerForm.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.loading.set(false);
+
+        void this.router.navigate(['/dashboard']);
+
+      },
+
+      error: (err) => {
+
+        this.loading.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al registrar el usuario.');
+
+      },
+
+    });
+
+  }
+
+  protected testVerifyMe(): void {
+
+    this.errorMsg.set(null);
+
+    this.successMsg.set(null);
+
+    this.authService.fetchMe().subscribe({
+
+      next: (res) => {
+
+        this.successMsg.set(`Token verificado en /api/auth/me: ${res.data.nombre} (${res.data.role})`);
+
+      },
+
+      error: (err) => {
+
+        this.errorMsg.set(err?.error?.message ?? 'Token inválido o expirado.');
+
+      },
+
+    });
+
+  }
+
+  protected testRotateToken(): void {
+
+    this.errorMsg.set(null);
+
+    this.successMsg.set(null);
+
+    this.authService.rotateRefreshToken().subscribe({
+
+      next: () => {
+
+        this.successMsg.set('¡Refresh Token rotado con éxito (RTR - RFC 6819)!');
+
+      },
+
+      error: (err) => {
+
+        this.errorMsg.set(err?.error?.message ?? 'No se pudo rotar el Refresh Token.');
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-1397701770.png)
+
+2.  En `frontend/src/app/features/auth/pages/login-page.html`:
+
+``` html
+<div class="max-w-xl mx-auto space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+
+    <div class="flex items-center justify-between border-b border-slate-200 pb-4 mb-6">
+
+      <div>
+
+        <h2 class="text-xl font-bold text-slate-800">Autenticación JWT y Sesión (ISS-08)</h2>
+
+        <p class="text-xs text-slate-500 mt-1">
+
+          Control de identidad, Access Token, Refresh Token (RTR) y perfil /api/auth/me
+
+        </p>
+
+      </div>
+
+      <div class="flex gap-2">
+
+        <p-button
+
+          label="Iniciar Sesión"
+
+          size="small"
+
+          [severity]="mode() === 'login' ? 'success' : 'secondary'"
+
+          [outlined]="mode() !== 'login'"
+
+          (onClick)="mode.set('login')"
+
+        />
+
+        <p-button
+
+          label="Registrar"
+
+          size="small"
+
+          [severity]="mode() === 'register' ? 'success' : 'secondary'"
+
+          [outlined]="mode() !== 'register'"
+
+          (onClick)="mode.set('register')"
+
+        />
+
+      </div>
+
+    </div>
+
+    @if (errorMsg()) {
+
+      <div class="p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+        {{ errorMsg() }}
+
+      </div>
+
+    }
+
+    @if (successMsg()) {
+
+      <div class="p-3 mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+
+        {{ successMsg() }}
+
+      </div>
+
+    }
+
+    @if (mode() === 'login') {
+
+      <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="space-y-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Correo Electrónico *</label>
+
+          <input pInputText formControlName="email" placeholder="usuario@arrendo360.com" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Contraseña *</label>
+
+          <input pInputText type="password" formControlName="password" />
+
+        </div>
+
+        <p-button
+
+          label="Ingresar con JWT"
+
+          icon="pi pi-sign-in"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="loading()"
+
+          styleClass="w-full"
+
+        />
+
+      </form>
+
+    } @else {
+
+      <form [formGroup]="registerForm" (ngSubmit)="onRegister()" class="space-y-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Nombre Completo *</label>
+
+          <input pInputText formControlName="nombre" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Correo Electrónico *</label>
+
+          <input pInputText formControlName="email" />
+
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+
+          <div class="flex flex-col gap-1">
+
+            <label class="text-xs font-semibold text-slate-600">Contraseña *</label>
+
+            <input pInputText type="password" formControlName="password" />
+
+          </div>
+
+          <div class="flex flex-col gap-1">
+
+            <label class="text-xs font-semibold text-slate-600">Rol RBAC *</label>
+
+            <p-select
+
+              formControlName="role"
+
+              [options]="rolesOptions"
+
+              optionLabel="label"
+
+              optionValue="value"
+
+              appendTo="body"
+
+            />
+
+          </div>
+
+        </div>
+
+        <p-button
+
+          label="Crear Cuenta y Autenticar"
+
+          icon="pi pi-user-plus"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="loading()"
+
+          styleClass="w-full"
+
+        />
+
+      </form>
+
+    }
+
+  </div>
+
+  <!-- Panel de Sesión Activa (si ya inició sesión) -->
+
+  @if (authService.currentUser(); as user) {
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+
+      <div class="flex items-center justify-between">
+
+        <div>
+
+          <h3 class="text-sm font-bold text-slate-800">Sesión Activa: {{ user.nombre }}</h3>
+
+          <p class="text-xs text-slate-500">{{ user.email }}</p>
+
+        </div>
+
+        <p-tag [value]="user.role" severity="info" />
+
+      </div>
+
+      <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+
+        <p-button
+
+          label="Verificar /api/auth/me"
+
+          icon="pi pi-verified"
+
+          size="small"
+
+          severity="info"
+
+          [outlined]="true"
+
+          (onClick)="testVerifyMe()"
+
+        />
+
+        <p-button
+
+          label="Rotar Refresh Token (RTR)"
+
+          icon="pi pi-sync"
+
+          size="small"
+
+          severity="warn"
+
+          [outlined]="true"
+
+          (onClick)="testRotateToken()"
+
+        />
+
+        <p-button
+
+          label="Cerrar Sesión (Logout)"
+
+          icon="pi pi-power-off"
+
+          size="small"
+
+          severity="danger"
+
+          (onClick)="authService.logout()"
+
+        />
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+```
+
+![](images/clipboard-1021777707.png)
+
+#### **Paso 5: Conectar el `Header` al usuario en sesión (`header.ts` y `header.html`)**
+
+1.   Abre `frontend/src/app/core/layout/header/header.ts` e inyecta `AuthService` y `RouterLink`:
+
+``` typescript
+import { Component, inject, input, output } from '@angular/core';
+
+import { RouterLink } from '@angular/router';
+
+import { ButtonModule } from 'primeng/button';
+
+import { TagModule } from 'primeng/tag';
+
+import { AuthService } from '../../auth/services/auth.service';
+
+@Component({
+
+  selector: 'app-header',
+
+  imports: [RouterLink, ButtonModule, TagModule],
+
+  templateUrl: './header.html',
+
+  styleUrl: './header.css',
+
+})
+
+export class Header {
+
+  protected readonly authService = inject(AuthService);
+
+  readonly sidebarOpen = input<boolean>(true);
+
+  readonly toggleSidebar = output<void>();
+
+}
+```
+
+![](images/clipboard-2733243067.png)
+
+2.  Abre `frontend/src/app/core/layout/header/header.html` y actualiza el bloque derecho del usuario para que muestre el usuario real logueado y su rol:
+
+```         
+<header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs">
+
+  <div class="flex items-center gap-3">
+
+    <p-button
+
+      [icon]="sidebarOpen() ? 'pi pi-bars' : 'pi pi-align-left'"
+
+      [rounded]="true"
+
+      [text]="true"
+
+      severity="secondary"
+
+      (onClick)="toggleSidebar.emit()"
+
+      title="Mostrar / ocultar menú lateral"
+
+    />
+
+    <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+
+      <i class="pi pi-building text-xl"></i>
+
+    </div>
+
+    <div>
+
+      <h1 class="text-lg font-bold text-slate-800 leading-tight">Arrendo360</h1>
+
+      <p class="text-xs text-slate-500">Plataforma de Gestión Inmobiliaria</p>
+
+    </div>
+
+  </div>
+
+  <div class="flex items-center gap-4">
+
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+
+      API Local :3002
+
+    </span>
+
+    @if (authService.currentUser(); as user) {
+
+      <div class="flex items-center gap-2">
+
+        <a routerLink="/login" class="flex items-center gap-2 text-sm text-slate-700 font-medium hover:text-emerald-700 cursor-pointer">
+
+          <i class="pi pi-user text-emerald-600"></i>
+
+          <span>{{ user.nombre }}</span>
+
+        </a>
+
+        <p-tag [value]="user.role" severity="info" />
+
+        <p-button
+
+          icon="pi pi-sign-out"
+
+          [rounded]="true"
+
+          [text]="true"
+
+          severity="danger"
+
+          title="Cerrar Sesión"
+
+          (onClick)="authService.logout()"
+
+        />
+
+      </div>
+
+    } @else {
+
+      <a routerLink="/login">
+
+        <p-button
+
+          label="Iniciar Sesión"
+
+          icon="pi pi-sign-in"
+
+          size="small"
+
+          severity="success"
+
+          [outlined]="true"
+
+        />
+
+      </a>
+
+    }
+
+  </div>
+
+</header>
+```
+
+![](images/clipboard-2677030189.png)
+
+#### **Paso 6: Registrar `/login` en `app.routes.ts` y en el menú `aside.ts`**
+
+1.   En `frontend/src/app/app.routes.ts`, importa `LoginPage` y agrega:
+
+    ``` typescript
+    { path: 'login', component: LoginPage },
+    ```
+
+    ![](images/clipboard-646441111.png)
+
+2.  En `frontend/src/app/core/layout/aside/aside.ts`, agrega un cuarto grupo al final de `navGroups`:
+
+    ``` typescript
+    {
+
+      title: 'Seguridad y RBAC (Fase II)',
+
+      items: [
+
+        { label: 'Sesión y JWT (/me)', icon: 'pi pi-shield', route: '/login' },
+
+      ],
+
+    },
+    ```
+
+    ![](images/clipboard-4043376695.png)
+
+**SESION Y JWT**
+
+![](images/clipboard-2568372132.png)
+
+## **ISS-09 a ISS-14** 
+
+## **Aprender (Cómo funciona el Control de Acceso RBAC en Angular 22)**
+
+En esta etapa final aprendemos **3 patrones profesionales de arquitectura en Angular**:
+
+1.  **Functional Route Guards (`authGuard` y `roleGuard` — ISS-09):**
+
+    - En Angular moderno ya no usamos clases que implementen `CanActivate`. Usamos funciones puras `CanActivateFn` que inyectan `AuthService` y `Router` con `inject()` y deciden si el usuario puede entrar a la ruta o debe ser redirigido a `/login`.
+
+2.   **Directiva Estructural Reactiva (`*appHasRole` — ISS-09):**
+
+    - Con una directiva estructural personalizada usando `effect()`, `TemplateRef` y `ViewContainerRef`, podemos poner `*appHasRole="['ADMIN', 'ASESOR']"` en cualquier botón de la interfaz, y si el usuario inicia sesión como `PROPIETARIO_CONSULTA`, el botón desaparece del DOM automáticamente.
+
+3.  **Filtrado dinámico del `Aside` con `computed()` y Consola RBAC / RefreshTokens (ISS-10 a ISS-14):**
+
+    - Cada ítem del menú lateral declara qué roles pueden verlo (`roles?: UserRole[]`), y un `computed()` en `Aside` filtra en vivo las opciones según el rol del usuario en sesión.
+
+    - Además completamos las tres vistas que faltaban en tu menú lateral (**Liquidaciones `/liquidaciones`**, **Mantenimiento `/mantenimiento`** y **Consola RBAC & RefreshTokens `/rbac`**) para que **ningún botón del menú quede sin pantalla**.
+
+## **ISS-09 a ISS-14** 
+
+Sigue estos **6 pasos**:
+
+### **Paso 1: Crear los Guards Funcionales (`src/app/core/auth/guards/auth.guard.ts`)**
+
+Crea la carpeta `frontend/src/app/core/auth/guards/` y dentro el archivo `auth.guard.ts`:
+
+``` typescript
+import { inject } from '@angular/core';
+
+import { CanActivateFn, Router } from '@angular/router';
+
+import { AuthService } from '../services/auth.service';
+
+import { UserRole } from '../models/auth.model';
+
+/**
+
+ * Guard que exige sesión JWT activa (Modalidad PROTECTED)
+
+ */
+
+export const authGuard: CanActivateFn = () => {
+
+  const authService = inject(AuthService);
+
+  const router = inject(Router);
+
+  if (authService.isAuthenticated()) {
+
+    return true;
+
+  }
+
+  return router.createUrlTree(['/login']);
+
+};
+
+/**
+
+ * Guard parametrizado por roles permitidos (Modalidad RBAC)
+
+ */
+
+export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
+
+  return () => {
+
+    const authService = inject(AuthService);
+
+    const router = inject(Router);
+
+    if (!authService.isAuthenticated()) {
+
+      return router.createUrlTree(['/login']);
+
+    }
+
+    if (authService.hasRole(allowedRoles)) {
+
+      return true;
+
+    }
+
+    return router.createUrlTree(['/dashboard']);
+
+  };
+
+};
+```
+
+![](images/clipboard-3459166048.png)
+
+### **Paso 2: Crear la Directiva Estructural Reactiva `*appHasRole` (`src/app/core/auth/directives/has-role.directive.ts`)**
+
+Crea la carpeta `frontend/src/app/core/auth/directives/` y dentro el archivo `has-role.directive.ts`:
+
+``` typescript
+import {
+
+  Directive,
+
+  TemplateRef,
+
+  ViewContainerRef,
+
+  effect,
+
+  inject,
+
+  input,
+
+} from '@angular/core';
+
+import { AuthService } from '../services/auth.service';
+
+import { UserRole } from '../models/auth.model';
+
+@Directive({
+
+  selector: '[appHasRole]',
+
+})
+
+export class HasRoleDirective {
+
+  private readonly templateRef = inject(TemplateRef<unknown>);
+
+  private readonly viewContainer = inject(ViewContainerRef);
+
+  private readonly authService = inject(AuthService);
+
+  readonly appHasRole = input.required<UserRole[]>();
+
+  private isRendered = false;
+
+  constructor() {
+
+    effect(() => {
+
+      const roles = this.appHasRole();
+
+      const currentRole = this.authService.userRole();
+
+      const canShow = roles.includes(currentRole);
+
+      if (canShow && !this.isRendered) {
+
+        this.viewContainer.createEmbeddedView(this.templateRef);
+
+        this.isRendered = true;
+
+      } else if (!canShow && this.isRendered) {
+
+        this.viewContainer.clear();
+
+        this.isRendered = false;
+
+      }
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-2811357609.png)
+
+### **Paso 3: Crear las páginas de `Liquidaciones` (`/liquidaciones`) y `Mantenimiento` (`/mantenimiento`)**
+
+Para que todos los enlaces inmobiliarios del menú lateral funcionen contra tu backend:
+
+1.  Ejecuta en tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/liquidaciones/pages/liquidaciones-page --flat --skip-tests
+
+npx ng g c features/mantenimiento/pages/mantenimiento-page --flat --skip-tests
+
+npx ng g c features/auth/pages/rbac-page --flat --skip-tests
+```
+
+![](images/clipboard-1314322535.png)
+
+2.  Abre `frontend/src/app/features/liquidaciones/pages/liquidaciones-page.ts` (consume `/api/distribuciones-pago` con el gate estricto de saldo del propietario):
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+
+import { HttpClient } from '@angular/common/http';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { InputNumberModule } from 'primeng/inputnumber';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { CobrosService } from '../../cobros/services/cobros.service';
+
+import { PropietariosService } from '../../propietarios/services/propietarios.service';
+
+export interface DistribucionPago {
+
+  id: number;
+
+  pagoId: number;
+
+  propietarioId: number;
+
+  nombre: string;
+
+  descripcion?: string;
+
+  monto: number;
+
+  estado: string;
+
+}
+
+@Component({
+
+  selector: 'app-liquidaciones-page',
+
+  imports: [
+
+    DecimalPipe,
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    InputNumberModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './liquidaciones-page.html',
+
+  styleUrl: './liquidaciones-page.css',
+
+})
+
+export class LiquidacionesPage implements OnInit {
+
+  private readonly http = inject(HttpClient);
+
+  protected readonly cobrosService = inject(CobrosService);
+
+  protected readonly propietariosService = inject(PropietariosService);
+
+  private readonly fb = inject(FormBuilder);
+
+  private readonly apiUrl = `${environment.apiUrl}/distribuciones-pago`;
+
+  protected readonly items = signal<DistribucionPago[]>([]);
+
+  protected readonly loading = signal(false);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    pagoId: [0, [Validators.required, Validators.min(1)]],
+
+    propietarioId: [0, [Validators.required, Validators.min(1)]],
+
+    nombre: ['Liquidación neta a propietario (90%)', [Validators.required]],
+
+    descripcion: ['Descuento de 10% comisión inmobiliaria'],
+
+    monto: [900000, [Validators.required, Validators.min(1)]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.load();
+
+    this.cobrosService.loadAll();
+
+    this.propietariosService.loadPropietarios();
+
+  }
+
+  protected load(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<DistribucionPago>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          this.items.set(res.data?.items ?? res.data?.rows ?? []);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => this.loading.set(false),
+
+      });
+
+  }
+
+  protected openNew(): void {
+
+    this.errorMsg.set(null);
+
+    const pago = this.cobrosService.pagos()[0];
+
+    const prop = this.propietariosService.propietarios()[0];
+
+    this.form.reset({
+
+      pagoId: pago?.id ?? 0,
+
+      propietarioId: prop?.id ?? 0,
+
+      nombre: 'Liquidación neta a propietario (90%)',
+
+      descripcion: 'Descuento 10% comisión administración',
+
+      monto: pago ? Math.round(Number(pago.monto) * 0.9) : 900000,
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) return;
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    this.http.post(this.apiUrl, this.form.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+        this.load();
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(
+
+          err?.error?.message ?? 'Error al liquidar (verifica que el monto no supere el pago).',
+
+        );
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-1853404731.png)
+
+3.  Abre `frontend/src/app/features/liquidaciones/pages/liquidaciones-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Liquidaciones a Propietarios</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        Dispersión financiera con control estricto de invariante de saldo (/api/distribuciones-pago)
+
+      </p>
+
+    </div>
+
+    <p-button label="Nueva Liquidación" icon="pi pi-plus" severity="success" (onClick)="openNew()" />
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table [value]="items()" [loading]="loading()" [paginator]="true" [rows]="8">
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Pago Base</th>
+
+          <th>Propietario ID</th>
+
+          <th>Concepto</th>
+
+          <th>Monto Dispersado</th>
+
+          <th>Estado</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td>Pago #{{ item.pagoId }}</td>
+
+          <td>Propietario #{{ item.propietarioId }}</td>
+
+          <td class="font-medium">{{ item.nombre }}</td>
+
+          <td class="font-mono font-semibold text-emerald-700">${{ item.monto | number: '1.0-0' }}</td>
+
+          <td><p-tag [value]="item.estado || 'LIQUIDADO'" severity="success" /></td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr><td colspan="6" class="text-center py-6 text-slate-500">Sin liquidaciones registradas.</td></tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    header="Dispersar Liquidación a Propietario"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Pago Recaudado *</label>
+
+          <p-select formControlName="pagoId" [options]="cobrosService.pagos()" optionLabel="id" optionValue="id" appendTo="body" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Propietario *</label>
+
+          <p-select formControlName="propietarioId" [options]="propietariosService.propietarios()" optionLabel="nombre" optionValue="id" appendTo="body" />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Concepto *</label>
+
+        <input pInputText formControlName="nombre" />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Monto a Transferir *</label>
+
+        <p-inputnumber formControlName="monto" [min]="1" />
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogVisible.set(false)" />
+
+        <p-button label="Liquidar" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+![](images/clipboard-1934058626.png)
+
+### **Paso 4: Configurar la página de `Mantenimiento` (`/mantenimiento`)**
+
+1.  Abre `frontend/src/app/features/mantenimiento/pages/mantenimiento-page.ts`:
+
+```         
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { InmueblesService } from '../../inmuebles/services/inmuebles.service';
+
+export interface TicketMantenimiento {
+
+  id: number;
+
+  inmuebleId: number;
+
+  nombre: string;
+
+  descripcion: string;
+
+  estado: string;
+
+}
+
+@Component({
+
+  selector: 'app-mantenimiento-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './mantenimiento-page.html',
+
+  styleUrl: './mantenimiento-page.css',
+
+})
+
+export class MantenimientoPage implements OnInit {
+
+  private readonly http = inject(HttpClient);
+
+  protected readonly inmueblesService = inject(InmueblesService);
+
+  private readonly fb = inject(FormBuilder);
+
+  private readonly apiUrl = `${environment.apiUrl}/tickets-mantenimiento`;
+
+  protected readonly tickets = signal<TicketMantenimiento[]>([]);
+
+  protected readonly loading = signal(false);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly saving = signal(false);
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    inmuebleId: [0, [Validators.required, Validators.min(1)]],
+
+    nombre: ['', [Validators.required]],
+
+    descripcion: ['', [Validators.required]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.load();
+
+    this.inmueblesService.loadInmuebles();
+
+  }
+
+  protected load(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<TicketMantenimiento>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          this.tickets.set(res.data?.items ?? res.data?.rows ?? []);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => this.loading.set(false),
+
+      });
+
+  }
+
+  protected openNew(): void {
+
+    this.form.reset({
+
+      inmuebleId: this.inmueblesService.inmuebles()[0]?.id ?? 0,
+
+      nombre: '',
+
+      descripcion: '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) return;
+
+    this.saving.set(true);
+
+    this.http.post(this.apiUrl, this.form.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+        this.load();
+
+      },
+
+      error: () => this.saving.set(false),
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-4219426734.png)
+
+2.  Abre `frontend/src/app/features/mantenimiento/pages/mantenimiento-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Tickets de Mantenimiento Locativo</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        Solicitudes correctivas y preventivas sobre inmuebles (/api/tickets-mantenimiento)
+
+      </p>
+
+    </div>
+
+    <p-button label="Nuevo Ticket" icon="pi pi-plus" severity="success" (onClick)="openNew()" />
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table [value]="tickets()" [loading]="loading()" [paginator]="true" [rows]="8">
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Inmueble ID</th>
+
+          <th>Asunto</th>
+
+          <th>Descripción</th>
+
+          <th>Estado</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td>Inmueble #{{ item.inmuebleId }}</td>
+
+          <td class="font-semibold">{{ item.nombre }}</td>
+
+          <td class="text-sm text-slate-600">{{ item.descripcion }}</td>
+
+          <td><p-tag [value]="item.estado || 'ABIERTO'" severity="warn" /></td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr><td colspan="5" class="text-center py-6 text-slate-500">No hay tickets de mantenimiento registrados.</td></tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog header="Registrar Ticket de Mantenimiento" [visible]="dialogVisible()" (visibleChange)="dialogVisible.set($event)" [modal]="true" [style]="{ width: '30rem' }">
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Inmueble Afectado *</label>
+
+        <p-select formControlName="inmuebleId" [options]="inmueblesService.inmuebles()" optionLabel="nombre" optionValue="id" appendTo="body" />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Título del Daño / Solicitud *</label>
+
+        <input pInputText formControlName="nombre" placeholder="Ej. Fuga en tubería de baño" />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Descripción Detallada *</label>
+
+        <input pInputText formControlName="descripcion" placeholder="Detalle de la novedad..." />
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogVisible.set(false)" />
+
+        <p-button label="Guardar Ticket" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+![](images/clipboard-1627237546.png)
+
+### **Paso 5: Configurar la Consola de `RBAC, Roles, Recursos y RefreshTokens` (`rbac-page.ts` y `rbac-page.html` — ISS-10 a ISS-14)** 
+
+1.  Abre `frontend/src/app/features/auth/pages/rbac-page.ts`:
+
+``` typescript
+import { Component, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { TagModule } from 'primeng/tag';
+
+import { environment } from '../../../../environments/environment';
+
+import { AuthService } from '../../../core/auth/services/auth.service';
+
+import { HasRoleDirective } from '../../../core/auth/directives/has-role.directive';
+
+@Component({
+
+  selector: 'app-rbac-page',
+
+  imports: [TableModule, ButtonModule, TagModule, HasRoleDirective],
+
+  templateUrl: './rbac-page.html',
+
+  styleUrl: './rbac-page.css',
+
+})
+
+export class RbacPage {
+
+  protected readonly authService = inject(AuthService);
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
+
+  protected readonly statusMsg = signal<string | null>(null);
+
+  protected readonly catalogRoles = [
+
+    { name: 'ADMIN', description: 'Administrador General del Sistema (Acceso Total)', status: 'active' },
+
+    { name: 'ASESOR', description: 'Asesor Comercial e Inmobiliario (Clientes, Inmuebles, Contratos)', status: 'active' },
+
+    { name: 'CARTERA', description: 'Gestor de Cartera y Cobranzas (Cobros, Pagos, Liquidaciones)', status: 'active' },
+
+    { name: 'MANTENIMIENTO', description: 'Técnico de Mantenimiento (Tickets y Órdenes)', status: 'active' },
+
+    { name: 'PROPIETARIO_CONSULTA', description: 'Propietario con permisos exclusivos de consulta (Solo Lectura)', status: 'active' },
+
+  ];
+
+  protected readonly catalogResources = [
+
+    { method: 'GET', path: '/api/health', mode: 'OPEN', roles: 'Público' },
+
+    { method: 'GET', path: '/api/auth/me', mode: 'PROTECTED', roles: 'Cualquier JWT válido' },
+
+    { method: 'POST', path: '/api/clients', mode: 'RBAC', roles: 'ADMIN, ASESOR' },
+
+    { method: 'POST', path: '/api/contratos', mode: 'RBAC', roles: 'ADMIN, ASESOR' },
+
+    { method: 'POST', path: '/api/cobros', mode: 'RBAC', roles: 'ADMIN, CARTERA' },
+
+    { method: 'POST', path: '/api/pagos', mode: 'RBAC', roles: 'ADMIN, CARTERA' },
+
+    { method: 'POST', path: '/api/distribuciones-pago', mode: 'RBAC', roles: 'ADMIN' },
+
+    { method: 'POST', path: '/api/auth/refresh', mode: 'RTR', roles: 'Refresh Token Activo' },
+
+  ];
+
+  protected rotateSession(): void {
+
+    this.authService.rotateRefreshToken().subscribe({
+
+      next: () =>
+
+        this.statusMsg.set('✅ Nuevo par de tokens (Access + Refresh) emitido por rotación RTR.'),
+
+      error: (err) =>
+
+        this.statusMsg.set(err?.error?.message ?? 'Error al rotar Refresh Token.'),
+
+    });
+
+  }
+
+  protected revokeFamily(): void {
+
+    const refreshToken = this.authService.refreshToken();
+
+    if (!refreshToken) return;
+
+    this.http.post(`${this.apiUrl}/revoke`, { refreshToken }).subscribe({
+
+      next: () => {
+
+        this.statusMsg.set('🔒 Familia de Refresh Tokens revocada exitosamente.');
+
+        this.authService.clearSession();
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-2658657546.png)
+
+2.  Abre `frontend/src/app/features/auth/pages/rbac-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Administración RBAC, Permisos y RefreshTokens (ISS-09 a ISS-14)</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        Catálogo de Roles, Recursos HTTP en 3 modalidades (OPEN, PROTECTED, RBAC) y Sesiones Renovables (RTR)
+
+      </p>
+
+    </div>
+
+    <!-- Demostración de Directiva Estructural *appHasRole (Solo visible para ADMIN) -->
+
+    <div *appHasRole="['ADMIN']">
+
+      <p-tag value="Modo Administrador Verificado (*appHasRole)" severity="success" />
+
+    </div>
+
+  </div>
+
+  @if (statusMsg()) {
+
+    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium">
+
+      {{ statusMsg() }}
+
+    </div>
+
+  }
+
+  <!-- Sección ISS-14: Gestión de RefreshTokens -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+
+    <div class="flex items-center justify-between">
+
+      <div>
+
+        <h3 class="text-base font-bold text-slate-800">ISS-14 · Gestión de Sesión y Refresh Token Rotation (RTR)</h3>
+
+        <p class="text-xs text-slate-500">
+
+          Renovación de credenciales y revocación de familia de tokens (RFC 6819)
+
+        </p>
+
+      </div>
+
+      <div class="flex gap-2">
+
+        <p-button
+
+          label="Rotar Token (POST /auth/refresh)"
+
+          icon="pi pi-sync"
+
+          size="small"
+
+          severity="info"
+
+          [disabled]="!authService.refreshToken()"
+
+          (onClick)="rotateSession()"
+
+        />
+
+        <p-button
+
+          label="Revocar Familia (POST /auth/revoke)"
+
+          icon="pi pi-ban"
+
+          size="small"
+
+          severity="danger"
+
+          [disabled]="!authService.refreshToken()"
+
+          (onClick)="revokeFamily()"
+
+        />
+
+      </div>
+
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 text-xs font-mono bg-slate-900 text-slate-200 p-4 rounded-lg">
+
+      <div class="truncate">
+
+        <span class="text-emerald-400 block mb-1">Access Token (JWT):</span>
+
+        {{ authService.accessToken() || 'Sin sesión activa' }}
+
+      </div>
+
+      <div class="truncate">
+
+        <span class="text-amber-400 block mb-1">Refresh Token (RTR):</span>
+
+        {{ authService.refreshToken() || 'Sin refresh token' }}
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Sección ISS-10 / ISS-11 / ISS-12: Roles y Matriz de Recursos -->
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+      <h3 class="text-sm font-bold text-slate-700 mb-3 px-2">Catálogo de Roles RBAC (ISS-11 / ISS-12)</h3>
+
+      <p-table [value]="catalogRoles">
+
+        <ng-template #header>
+
+          <tr>
+
+            <th>Rol</th>
+
+            <th>Descripción</th>
+
+            <th>Estado</th>
+
+          </tr>
+
+        </ng-template>
+
+        <ng-template #body let-r>
+
+          <tr>
+
+            <td class="font-mono font-bold text-xs">{{ r.name }}</td>
+
+            <td class="text-xs text-slate-600">{{ r.description }}</td>
+
+            <td><p-tag [value]="r.status" severity="success" /></td>
+
+          </tr>
+
+        </ng-template>
+
+      </p-table>
+
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+      <h3 class="text-sm font-bold text-slate-700 mb-3 px-2">Políticas de Acceso por Recurso (ISS-13)</h3>
+
+      <p-table [value]="catalogResources">
+
+        <ng-template #header>
+
+          <tr>
+
+            <th>Método</th>
+
+            <th>Recurso</th>
+
+            <th>Modalidad</th>
+
+            <th>Roles Autorizados</th>
+
+          </tr>
+
+        </ng-template>
+
+        <ng-template #body let-res>
+
+          <tr>
+
+            <td><p-tag [value]="res.method" [severity]="res.method === 'GET' ? 'info' : 'warn'" /></td>
+
+            <td class="font-mono text-xs">{{ res.path }}</td>
+
+            <td class="font-semibold text-xs">{{ res.mode }}</td>
+
+            <td class="text-xs text-slate-600">{{ res.roles }}</td>
+
+          </tr>
+
+        </ng-template>
+
+      </p-table>
+
+    </div>
+
+  </div>
+
+</div>
+```
+
+![](images/clipboard-551109021.png)
+
+### **Paso 6: Registrar las rutas finales en `app.routes.ts` y agregar el enlace `/rbac` en `aside.ts`**
+
+1.  En `frontend/src/app/core/layout/aside/aside.ts`, agrega el ítem de **Roles, Permisos y RTR** dentro del grupo `'Seguridad y RBAC (Fase II)'`:
+
+``` typescript
+{
+
+      title: 'Seguridad y RBAC (Fase II)',
+
+      items: [
+
+        { label: 'Sesión y JWT (/me)', icon: 'pi pi-shield', route: '/login' },
+
+        { label: 'Roles, Permisos y RTR', icon: 'pi pi-lock', route: '/rbac' },
+
+      ],
+
+    },
+```
+
+![](images/clipboard-843236839.png)
+
+2.   En `frontend/src/app/app.routes.ts`, registra las tres rutas restantes (`liquidaciones`, `mantenimiento` y `rbac`):
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard/dashboard';
+
+import { ClientsPage } from './features/clients/pages/clients-page';
+
+import { ProductTypesPage } from './features/product-types/pages/product-types-page';
+
+import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
+
+import { InmueblesPage } from './features/inmuebles/pages/inmuebles-page';
+
+import { ProductsPage } from './features/products/pages/products-page';
+
+import { ContratosPage } from './features/contratos/pages/contratos-page';
+
+import { SalesPage } from './features/sales/pages/sales-page';
+
+import { CobrosPage } from './features/cobros/pages/cobros-page';
+
+import { LiquidacionesPage } from './features/liquidaciones/pages/liquidaciones-page';
+
+import { MantenimientoPage } from './features/mantenimiento/pages/mantenimiento-page';
+
+import { LoginPage } from './features/auth/pages/login-page';
+
+import { RbacPage } from './features/auth/pages/rbac-page';
+
+export const routes: Routes = [
+
+  { path: 'dashboard', component: Dashboard },
+
+  { path: 'clients', component: ClientsPage },
+
+  { path: 'propietarios', component: PropietariosPage },
+
+  { path: 'inmuebles', component: InmueblesPage },
+
+  { path: 'contratos', component: ContratosPage },
+
+  { path: 'cobros', component: CobrosPage },
+
+  { path: 'liquidaciones', component: LiquidacionesPage },
+
+  { path: 'mantenimiento', component: MantenimientoPage },
+
+  { path: 'product-types', component: ProductTypesPage },
+
+  { path: 'products', component: ProductsPage },
+
+  { path: 'sales', component: SalesPage },
+
+  { path: 'login', component: LoginPage },
+
+  { path: 'rbac', component: RbacPage },
+
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+
+  { path: '**', redirectTo: 'dashboard' },
+
+];
+```
+
+![](images/clipboard-1725996255.png)
+
+**LIQUIDACIONES**
+
+![](images/clipboard-2564289569.png)
+
+![](images/clipboard-1997470885.png)
+
+**MANTENIMIENTO**
+
+![](images/clipboard-1769319022.png)
+
+![](images/clipboard-3564924524.png)
+
+**ROLES, PERMISOS Y RTR**
+
+![](images/clipboard-3917193312.png)
