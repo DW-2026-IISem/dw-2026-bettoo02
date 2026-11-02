@@ -6864,3 +6864,1107 @@ export const routes: Routes = [
 **VENTAS**
 
 ![](images/clipboard-1830085059.png)
+
+Como ya está funcionando **Contratos (`/contratos`)** y **Ventas (`/sales`)** del **ISS-06**, vamos al cierre del **ISS-06 / ISS-07 (Cierre de Fase I)**:
+
+1.  **Cobros Mensuales y Pagos (`/cobros`)** — Donde al registrar un pago de un cobro pendiente, el cobro cambia automáticamente su estado a `PAGADO`.
+
+2.  **Dashboard Reactivo (`/dashboard`)** — Con tarjetas de métricas financieras y operativas en vivo usando `computed()` Signals de todas las entidades de **Arrendo360**.
+
+## **Parte 1: `Cobros Mensuales y Pagos` (`/api/cobros` y `/api/pagos`)**
+
+### **¿Cómo funciona el ciclo de Cobros y Pagos en tu Backend?**
+
+En mi backend (`cobros.controller.ts` y `pagos.controller.ts`):
+
+- **Emitir Cobro (`POST /api/cobros`):** Recibe `{ referenciaId, fecha, valor, observaciones }` donde `referenciaId` es el ID de un **Contrato ACTIVO**. El cobro nace con estado `'PENDIENTE'`.
+
+- **Registrar Pago (`POST /api/pagos`):** Recibe `{ referenciaId, metodo, monto, fecha }` donde `referenciaId` es el ID del **Cobro Mensual**. Cuando el monto pagado cubre el valor del cobro, la entidad de dominio `CobroMensual` ejecuta `aplicarPago(monto)` y cambia automáticamente el cobro a `'PAGADO'`.
+
+### **`Cobros y Pagos`**
+
+#### **Paso 1: Crear el modelo `src/app/features/cobros/models/cobro.model.ts`**
+
+Se crea la carpeta `frontend/src/app/features/cobros/models/` y dentro el archivo `cobro.model.ts`:
+
+``` typescript
+export interface Cobro {
+
+  id: number;
+
+  referenciaId: number; // ID del Contrato
+
+  fecha: string;
+
+  valor: number;
+
+  estado: 'PENDIENTE' | 'PAGADO' | 'ANULADO' | string;
+
+  observaciones?: string;
+
+  createdAt?: string;
+
+}
+
+export interface CreateCobroDto {
+
+  referenciaId: number;
+
+  fecha: string;
+
+  valor: number;
+
+  observaciones?: string;
+
+}
+
+export interface Pago {
+
+  id: number;
+
+  referenciaTipo: string;
+
+  referenciaId: number; // ID del Cobro
+
+  metodo: string;
+
+  monto: number;
+
+  fecha: string;
+
+  estado: string;
+
+}
+
+export interface CreatePagoDto {
+
+  referenciaId: number;
+
+  metodo: string;
+
+  monto: number;
+
+  fecha: string;
+
+}
+```
+
+![](images/clipboard-2354921110.png)
+
+#### **Paso 2: Crear el servicio `src/app/features/cobros/services/cobros.service.ts`**
+
+Crea `frontend/src/app/features/cobros/services/cobros.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { Cobro, CreateCobroDto, CreatePagoDto, Pago } from '../models/cobro.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class CobrosService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly cobrosUrl = `${environment.apiUrl}/cobros`;
+
+  private readonly pagosUrl = `${environment.apiUrl}/pagos`;
+
+  private readonly headers = new HttpHeaders({ 'x-user-role': 'ADMIN' });
+
+  readonly cobros = signal<Cobro[]>([]);
+
+  readonly pagos = signal<Pago[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadAll(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Cobro>>>(`${this.cobrosUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          this.cobros.set(res.data?.items ?? res.data?.rows ?? []);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => this.loading.set(false),
+
+      });
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Pago>>>(`${this.pagosUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          this.pagos.set(res.data?.items ?? res.data?.rows ?? []);
+
+        },
+
+      });
+
+  }
+
+  createCobro(dto: CreateCobroDto): Observable<ApiResponse<Cobro>> {
+
+    return this.http
+
+      .post<ApiResponse<Cobro>>(this.cobrosUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadAll()));
+
+  }
+
+  registrarPago(dto: CreatePagoDto): Observable<ApiResponse<Pago>> {
+
+    return this.http
+
+      .post<ApiResponse<Pago>>(this.pagosUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadAll()));
+
+  }
+
+}
+```
+
+![](images/clipboard-746892643.png)
+
+#### **Paso 3: Generar el componente `CobrosPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/cobros/pages/cobros-page --flat --skip-tests
+```
+
+![](images/clipboard-581622913.png)
+
+1.  En `frontend/src/app/features/cobros/pages/cobros-page.ts`:
+
+``` typescript
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { InputNumberModule } from 'primeng/inputnumber';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { CobrosService } from '../services/cobros.service';
+
+import { ContratosService } from '../../contratos/services/contratos.service';
+
+import { Cobro } from '../models/cobro.model';
+
+@Component({
+
+  selector: 'app-cobros-page',
+
+  imports: [
+
+    DecimalPipe,
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    InputNumberModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './cobros-page.html',
+
+  styleUrl: './cobros-page.css',
+
+})
+
+export class CobrosPage implements OnInit {
+
+  protected readonly cobrosService = inject(CobrosService);
+
+  protected readonly contratosService = inject(ContratosService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly cobroDialog = signal(false);
+
+  protected readonly pagoDialog = signal(false);
+
+  protected readonly selectedCobro = signal<Cobro | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly contratosActivos = computed(() =>
+
+    this.contratosService.contratos().filter((c) => c.estado === 'ACTIVO'),
+
+  );
+
+  protected readonly metodosPago = [
+
+    { label: 'Transferencia Bancaria', value: 'TRANSFERENCIA' },
+
+    { label: 'PSE', value: 'PSE' },
+
+    { label: 'Efectivo', value: 'EFECTIVO' },
+
+    { label: 'Tarjeta', value: 'TARJETA' },
+
+  ];
+
+  protected readonly cobroForm = this.fb.nonNullable.group({
+
+    referenciaId: [0, [Validators.required, Validators.min(1)]],
+
+    fecha: ['2026-11-05', [Validators.required]],
+
+    valor: [1500000, [Validators.required, Validators.min(1)]],
+
+    observaciones: ['Canon mensual de arrendamiento'],
+
+  });
+
+  protected readonly pagoForm = this.fb.nonNullable.group({
+
+    referenciaId: [0, [Validators.required]],
+
+    metodo: ['TRANSFERENCIA', [Validators.required]],
+
+    monto: [0, [Validators.required, Validators.min(1)]],
+
+    fecha: ['2026-11-05', [Validators.required]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.cobrosService.loadAll();
+
+    this.contratosService.loadContratos();
+
+  }
+
+  protected getContratoNumero(id: number): string {
+
+    return (
+
+      this.contratosService.contratos().find((c) => c.id === id)?.numero ??
+
+      `Contrato #${id}`
+
+    );
+
+  }
+
+  protected openNewCobro(): void {
+
+    this.errorMsg.set(null);
+
+    const first = this.contratosActivos()[0];
+
+    this.cobroForm.reset({
+
+      referenciaId: first?.id ?? 0,
+
+      fecha: new Date().toISOString().slice(0, 10),
+
+      valor: first ? Number(first.valor) : 1500000,
+
+      observaciones: 'Canon mensual de arrendamiento',
+
+    });
+
+    this.cobroDialog.set(true);
+
+  }
+
+  protected openPayModal(cobro: Cobro): void {
+
+    this.errorMsg.set(null);
+
+    this.selectedCobro.set(cobro);
+
+    this.pagoForm.reset({
+
+      referenciaId: cobro.id,
+
+      metodo: 'TRANSFERENCIA',
+
+      monto: Number(cobro.valor),
+
+      fecha: new Date().toISOString().slice(0, 10),
+
+    });
+
+    this.pagoDialog.set(true);
+
+  }
+
+  protected saveCobro(): void {
+
+    if (this.cobroForm.invalid) return;
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    this.cobrosService.createCobro(this.cobroForm.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.cobroDialog.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al emitir el cobro.');
+
+      },
+
+    });
+
+  }
+
+  protected savePago(): void {
+
+    if (this.pagoForm.invalid) return;
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    this.cobrosService.registrarPago(this.pagoForm.getRawValue()).subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.pagoDialog.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al registrar el pago.');
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-3015612914.png)
+
+2.  En `frontend/src/app/features/cobros/pages/cobros-page.html`:
+
+```         
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Cobros Mensuales y Recaudo de Pagos</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06 / ISS-07: Emisión de cuentas de cobro y transición automática a PAGADO (/api/cobros y /api/pagos)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="cobrosService.loadAll()"
+
+      />
+
+      <p-button
+
+        label="Emitir Cobro"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNewCobro()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tabla de Cuentas de Cobro -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <h3 class="text-sm font-bold text-slate-700 mb-3 px-2">Cuentas de Cobro Emitidas</h3>
+
+    <p-table
+
+      [value]="cobrosService.cobros()"
+
+      [loading]="cobrosService.loading()"
+
+      [paginator]="true"
+
+      [rows]="8"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Contrato</th>
+
+          <th>Fecha Emisión</th>
+
+          <th>Observaciones</th>
+
+          <th>Valor</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-mono font-semibold text-slate-800">
+
+            {{ getContratoNumero(item.referenciaId) }}
+
+          </td>
+
+          <td>{{ item.fecha }}</td>
+
+          <td class="text-sm text-slate-600">{{ item.observaciones || '—' }}</td>
+
+          <td class="font-mono font-semibold text-emerald-700">
+
+            ${{ item.valor | number: '1.0-0' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.estado"
+
+              [severity]="item.estado === 'PAGADO' ? 'success' : 'warn'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            @if (item.estado === 'PENDIENTE') {
+
+              <p-button
+
+                label="Registrar Pago"
+
+                icon="pi pi-dollar"
+
+                size="small"
+
+                severity="info"
+
+                (onClick)="openPayModal(item)"
+
+              />
+
+            } @else {
+
+              <span class="text-xs text-emerald-600 font-medium">
+
+                <i class="pi pi-check-circle"></i> Recaudado
+
+              </span>
+
+            }
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="7" class="text-center py-6 text-slate-500">
+
+            No hay cuentas de cobro emitidas aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <!-- Modal Emitir Cobro -->
+
+  <p-dialog
+
+    header="Emitir Cuenta de Cobro Mensual"
+
+    [visible]="cobroDialog()"
+
+    (visibleChange)="cobroDialog.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="cobroForm" (ngSubmit)="saveCobro()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Contrato Activo *</label>
+
+        <p-select
+
+          formControlName="referenciaId"
+
+          [options]="contratosActivos()"
+
+          optionLabel="numero"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha de Cobro *</label>
+
+          <input pInputText type="date" formControlName="fecha" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Valor a Cobrar *</label>
+
+          <p-inputnumber formControlName="valor" [min]="1" />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Concepto / Observaciones</label>
+
+        <input pInputText formControlName="observaciones" />
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="cobroDialog.set(false)" />
+
+        <p-button label="Emitir Cobro" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+  <!-- Modal Registrar Pago -->
+
+  <p-dialog
+
+    header="Aplicar Pago a Cobro #{{ selectedCobro()?.id }}"
+
+    [visible]="pagoDialog()"
+
+    (visibleChange)="pagoDialog.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '30rem' }"
+
+  >
+
+    <form [formGroup]="pagoForm" (ngSubmit)="savePago()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Método de Pago *</label>
+
+        <p-select
+
+          formControlName="metodo"
+
+          [options]="metodosPago"
+
+          optionLabel="label"
+
+          optionValue="value"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Monto Recaudado *</label>
+
+          <p-inputnumber formControlName="monto" [min]="1" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha de Pago *</label>
+
+          <input pInputText type="date" formControlName="fecha" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="pagoDialog.set(false)" />
+
+        <p-button label="Confirmar Pago" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+![](images/clipboard-3075172642.png)
+
+## Parte 2: **ISS-07 — Dashboard Ejecutivo con Agregaciones Reactivas (`computed()`)**
+
+Ahora trabajamos el componente `Dashboard` para que consolide en tiempo real las métricas de **Clientes, Inmuebles, Contratos, Recaudo de Cobros y Ventas** usando `computed()`, tal como pide el **ISS-07** de cierre de la Fase I:
+
+1.  Abre `frontend/src/app/features/dashboard/dashboard/dashboard.ts` y actualízalo así:
+
+``` typescript
+import { Component, OnInit, computed, inject } from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+
+import { RouterLink } from '@angular/router';
+
+import { ButtonModule } from 'primeng/button';
+
+import { HealthService } from '../../../core/services/health.service';
+
+import { ClientsService } from '../../clients/services/clients.service';
+
+import { InmueblesService } from '../../inmuebles/services/inmuebles.service';
+
+import { ContratosService } from '../../contratos/services/contratos.service';
+
+import { CobrosService } from '../../cobros/services/cobros.service';
+
+import { ProductsService } from '../../products/services/products.service';
+
+import { SalesService } from '../../sales/services/sales.service';
+
+@Component({
+
+  selector: 'app-dashboard',
+
+  imports: [DecimalPipe, RouterLink, ButtonModule],
+
+  templateUrl: './dashboard.html',
+
+  styleUrl: './dashboard.css',
+
+})
+
+export class Dashboard implements OnInit {
+
+  protected readonly healthService = inject(HealthService);
+
+  protected readonly clientsService = inject(ClientsService);
+
+  protected readonly inmueblesService = inject(InmueblesService);
+
+  protected readonly contratosService = inject(ContratosService);
+
+  protected readonly cobrosService = inject(CobrosService);
+
+  protected readonly productsService = inject(ProductsService);
+
+  protected readonly salesService = inject(SalesService);
+
+  // KPIs reactivos calculados con computed() Signals (ISS-07)
+
+  protected readonly activeClientsCount = computed(
+
+    () => this.clientsService.clients().filter((c) => c.isActive).length,
+
+  );
+
+  protected readonly activeContratosCount = computed(
+
+    () => this.contratosService.contratos().filter((c) => c.estado === 'ACTIVO').length,
+
+  );
+
+  protected readonly totalRecaudadoPagos = computed(() =>
+
+    this.cobrosService
+
+      .pagos()
+
+      .reduce((acc, p) => acc + Number(p.monto || 0), 0),
+
+  );
+
+  protected readonly totalSalesRevenue = computed(() =>
+
+    this.salesService
+
+      .sales()
+
+      .filter((s) => s.status === 'active')
+
+      .reduce((acc, s) => acc + Number(s.total || 0), 0),
+
+  );
+
+  protected readonly lowStockCount = computed(
+
+    () =>
+
+      this.productsService
+
+        .products()
+
+        .filter((p) => p.status === 'active' && p.quantity <= p.min_stock).length,
+
+  );
+
+  ngOnInit(): void {
+
+    this.refreshAll();
+
+  }
+
+  protected refreshAll(): void {
+
+    this.healthService.checkHealth();
+
+    this.clientsService.loadClients();
+
+    this.inmueblesService.loadInmuebles();
+
+    this.contratosService.loadContratos();
+
+    this.cobrosService.loadAll();
+
+    this.productsService.loadProducts();
+
+    this.salesService.loadSales();
+
+  }
+
+}
+```
+
+![](images/clipboard-1564658195.png)
+
+2.  Abre `frontend/src/app/features/dashboard/dashboard/dashboard.html` y coloca los indicadores ejecutivos:
+
+``` html
+<div class="space-y-6">
+
+  <!-- Cabecera -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Panel Ejecutivo — Arrendo360</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-07: Resumen operativo e indicadores reactivos con Signals computed()
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-3">
+
+      @if (healthService.isOnline()) {
+
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-xs border border-emerald-200">
+
+          <i class="pi pi-check-circle"></i>
+
+          API Conectada
+
+        </span>
+
+      }
+
+      <p-button
+
+        label="Actualizar KPIs"
+
+        icon="pi pi-refresh"
+
+        severity="success"
+
+        [loading]="healthService.checking()"
+
+        (onClick)="refreshAll()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tarjetas de KPIs (Grid 4 columnas) -->
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <!-- KPI 1: Arrendatarios -->
+
+    <a routerLink="/clients" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Clientes Activos</span>
+
+        <i class="pi pi-users text-emerald-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeClientsCount() }}</p>
+
+      <p class="text-xs text-slate-500 mt-1">De {{ clientsService.clients().length }} registrados</p>
+
+    </a>
+
+    <!-- KPI 2: Inmuebles y Contratos -->
+
+    <a routerLink="/contratos" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Contratos Activos</span>
+
+        <i class="pi pi-file-edit text-blue-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeContratosCount() }}</p>
+
+      <p class="text-xs text-slate-500 mt-1">{{ inmueblesService.inmuebles().length }} inmuebles en catálogo</p>
+
+    </a>
+
+    <!-- KPI 3: Recaudo Arrendamientos -->
+
+    <a routerLink="/cobros" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recaudo Cánones</span>
+
+        <i class="pi pi-wallet text-amber-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-2xl font-bold font-mono text-emerald-700 mt-2">
+
+        ${{ totalRecaudadoPagos() | number: '1.0-0' }}
+
+      </p>
+
+      <p class="text-xs text-slate-500 mt-1">{{ cobrosService.cobros().length }} cuentas de cobro</p>
+
+    </a>
+
+    <!-- KPI 4: Ventas Comerciales y Stock -->
+
+    <a routerLink="/sales" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ventas Activas</span>
+
+        <i class="pi pi-shopping-cart text-purple-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-2xl font-bold font-mono text-slate-800 mt-2">
+
+        ${{ totalSalesRevenue() | number: '1.0-2' }}
+
+      </p>
+
+      <p class="text-xs text-amber-600 font-medium mt-1">
+
+        {{ lowStockCount() }} producto(s) con stock bajo
+
+      </p>
+
+    </a>
+
+  </div>
+
+</div>
+```
+
+![](images/clipboard-1089524549.png)
+
+3.  Por último, registra la ruta `/cobros` en `frontend/src/app/app.routes.ts`:
+
+```         
+import { CobrosPage } from './features/cobros/pages/cobros-page';
+
+// ... y dentro de routes:
+
+  { path: 'cobros', component: CobrosPage },
+```
+
+![](images/clipboard-2961579665.png)
+
+**COBROS Y PAGOS**
+
+![](images/clipboard-3933776749.png)
+
+**DASHBOARD**
+
+![](images/clipboard-1362092256.png)
+
+![](images/clipboard-3981024562.png)

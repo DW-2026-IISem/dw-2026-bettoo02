@@ -1,0 +1,345 @@
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Cobros Mensuales y Recaudo de Pagos</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-06 / ISS-07: Emisión de cuentas de cobro y transición automática a PAGADO (/api/cobros y /api/pagos)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="cobrosService.loadAll()"
+
+      />
+
+      <p-button
+
+        label="Emitir Cobro"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNewCobro()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tabla de Cuentas de Cobro -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <h3 class="text-sm font-bold text-slate-700 mb-3 px-2">Cuentas de Cobro Emitidas</h3>
+
+    <p-table
+
+      [value]="cobrosService.cobros()"
+
+      [loading]="cobrosService.loading()"
+
+      [paginator]="true"
+
+      [rows]="8"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Contrato</th>
+
+          <th>Fecha Emisión</th>
+
+          <th>Observaciones</th>
+
+          <th>Valor</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-mono font-semibold text-slate-800">
+
+            {{ getContratoNumero(item.referenciaId) }}
+
+          </td>
+
+          <td>{{ item.fecha }}</td>
+
+          <td class="text-sm text-slate-600">{{ item.observaciones || '—' }}</td>
+
+          <td class="font-mono font-semibold text-emerald-700">
+
+            ${{ item.valor | number: '1.0-0' }}
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.estado"
+
+              [severity]="item.estado === 'PAGADO' ? 'success' : 'warn'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            @if (item.estado === 'PENDIENTE') {
+
+              <p-button
+
+                label="Registrar Pago"
+
+                icon="pi pi-dollar"
+
+                size="small"
+
+                severity="info"
+
+                (onClick)="openPayModal(item)"
+
+              />
+
+            } @else {
+
+              <span class="text-xs text-emerald-600 font-medium">
+
+                <i class="pi pi-check-circle"></i> Recaudado
+
+              </span>
+
+            }
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="7" class="text-center py-6 text-slate-500">
+
+            No hay cuentas de cobro emitidas aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <!-- Modal Emitir Cobro -->
+
+  <p-dialog
+
+    header="Emitir Cuenta de Cobro Mensual"
+
+    [visible]="cobroDialog()"
+
+    (visibleChange)="cobroDialog.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="cobroForm" (ngSubmit)="saveCobro()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Contrato Activo *</label>
+
+        <p-select
+
+          formControlName="referenciaId"
+
+          [options]="contratosActivos()"
+
+          optionLabel="numero"
+
+          optionValue="id"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha de Cobro *</label>
+
+          <input pInputText type="date" formControlName="fecha" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Valor a Cobrar *</label>
+
+          <p-inputnumber formControlName="valor" [min]="1" />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Concepto / Observaciones</label>
+
+        <input pInputText formControlName="observaciones" />
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="cobroDialog.set(false)" />
+
+        <p-button label="Emitir Cobro" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+  <!-- Modal Registrar Pago -->
+
+  <p-dialog
+
+    header="Aplicar Pago a Cobro #{{ selectedCobro()?.id }}"
+
+    [visible]="pagoDialog()"
+
+    (visibleChange)="pagoDialog.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '30rem' }"
+
+  >
+
+    <form [formGroup]="pagoForm" (ngSubmit)="savePago()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Método de Pago *</label>
+
+        <p-select
+
+          formControlName="metodo"
+
+          [options]="metodosPago"
+
+          optionLabel="label"
+
+          optionValue="value"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Monto Recaudado *</label>
+
+          <p-inputnumber formControlName="monto" [min]="1" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Fecha de Pago *</label>
+
+          <input pInputText type="date" formControlName="fecha" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="pagoDialog.set(false)" />
+
+        <p-button label="Confirmar Pago" icon="pi pi-check" severity="success" type="submit" [loading]="saving()" />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>

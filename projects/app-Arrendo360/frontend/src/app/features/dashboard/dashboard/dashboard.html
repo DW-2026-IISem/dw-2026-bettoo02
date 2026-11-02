@@ -1,70 +1,140 @@
 <div class="space-y-6">
 
+  <!-- Cabecera -->
+
   <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
 
     <div>
 
-      <h2 class="text-xl font-bold text-slate-800">Panel Principal — Arrendo360</h2>
+      <h2 class="text-xl font-bold text-slate-800">Panel Ejecutivo — Arrendo360</h2>
 
       <p class="text-sm text-slate-500 mt-1">
 
-        ISS-02: Núcleo de servicios HTTP, environments y contrato ApiResponse conectados.
+        ISS-07: Resumen operativo e indicadores reactivos con Signals computed()
 
       </p>
 
     </div>
 
-    <p-button
-
-      label="Verificar API"
-
-      icon="pi pi-refresh"
-
-      severity="success"
-
-      [loading]="healthService.checking()"
-
-      (onClick)="healthService.checkHealth()"
-
-    />
-
-  </div>
-
-  <!-- Tarjeta de estado de conexión con el Backend -->
-
-  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
-
-    <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
-
-      Estado de Conexión con Backend (:3002/api/health)
-
-    </h3>
-
     <div class="flex items-center gap-3">
 
       @if (healthService.isOnline()) {
 
-        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm border border-emerald-200">
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-xs border border-emerald-200">
 
-          <i class="pi pi-check-circle text-emerald-600"></i>
+          <i class="pi pi-check-circle"></i>
 
-          Backend Conectado (status: ok)
-
-        </span>
-
-      } @else {
-
-        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 font-medium text-sm border border-red-200">
-
-          <i class="pi pi-times-circle text-red-600"></i>
-
-          Backend Desconectado (Verifica que el backend corra en puerto 3002)
+          API Conectada
 
         </span>
 
       }
 
+      <p-button
+
+        label="Actualizar KPIs"
+
+        icon="pi pi-refresh"
+
+        severity="success"
+
+        [loading]="healthService.checking()"
+
+        (onClick)="refreshAll()"
+
+      />
+
     </div>
+
+  </div>
+
+  <!-- Tarjetas de KPIs (Grid 4 columnas) -->
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <!-- KPI 1: Arrendatarios -->
+
+    <a routerLink="/clients" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Clientes Activos</span>
+
+        <i class="pi pi-users text-emerald-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeClientsCount() }}</p>
+
+      <p class="text-xs text-slate-500 mt-1">De {{ clientsService.clients().length }} registrados</p>
+
+    </a>
+
+    <!-- KPI 2: Inmuebles y Contratos -->
+
+    <a routerLink="/contratos" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Contratos Activos</span>
+
+        <i class="pi pi-file-edit text-blue-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeContratosCount() }}</p>
+
+      <p class="text-xs text-slate-500 mt-1">{{ inmueblesService.inmuebles().length }} inmuebles en catálogo</p>
+
+    </a>
+
+    <!-- KPI 3: Recaudo Arrendamientos -->
+
+    <a routerLink="/cobros" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recaudo Cánones</span>
+
+        <i class="pi pi-wallet text-amber-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-2xl font-bold font-mono text-emerald-700 mt-2">
+
+        ${{ totalRecaudadoPagos() | number: '1.0-0' }}
+
+      </p>
+
+      <p class="text-xs text-slate-500 mt-1">{{ cobrosService.cobros().length }} cuentas de cobro</p>
+
+    </a>
+
+    <!-- KPI 4: Ventas Comerciales y Stock -->
+
+    <a routerLink="/sales" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
+
+      <div class="flex items-center justify-between">
+
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ventas Activas</span>
+
+        <i class="pi pi-shopping-cart text-purple-600 text-xl"></i>
+
+      </div>
+
+      <p class="text-2xl font-bold font-mono text-slate-800 mt-2">
+
+        ${{ totalSalesRevenue() | number: '1.0-2' }}
+
+      </p>
+
+      <p class="text-xs text-amber-600 font-medium mt-1">
+
+        {{ lowStockCount() }} producto(s) con stock bajo
+
+      </p>
+
+    </a>
 
   </div>
 

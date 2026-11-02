@@ -7,7 +7,8 @@ import { InmueblesPage } from './features/inmuebles/pages/inmuebles-page';
 import { ProductsPage } from './features/products/pages/products-page';
 import { ContratosPage } from './features/contratos/pages/contratos-page';
 import { SalesPage } from './features/sales/pages/sales-page';
-
+import { CobrosPage } from './features/cobros/pages/cobros-page';
+ 
 export const routes: Routes = [
   { path: 'dashboard', component: Dashboard },
   { path: 'clients', component: ClientsPage },
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'products', component: ProductsPage },
   { path: 'contratos', component: ContratosPage },
   { path: 'sales', component: SalesPage },
+   { path: 'cobros', component: CobrosPage },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];
