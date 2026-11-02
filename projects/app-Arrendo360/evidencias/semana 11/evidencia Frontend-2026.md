@@ -1502,3 +1502,751 @@ export const routes: Routes = [
 ```
 
 ![](images/clipboard-1715798117.png)
+
+### **ISS-03 · Capa 2:** 
+
+Vamos a construir este módulo en **4 piezas limpias**: `Model` → `Service` → `Component` → `Route`.
+
+#### **Paso 1: Crear el modelo `src/app/features/clients/models/client.model.ts`**
+
+Crea la carpeta `frontend/src/app/features/clients/models/` y dentro el archivo `client.model.ts` (espejo exacto de tu `ArrendatarioResponseDto` del backend):
+
+``` typescript
+export interface Client {
+
+  id: number;
+
+  tipoDocumento: string;
+
+  numeroDocumento: string;
+
+  nombre: string;
+
+  telefono: string;
+
+  email: string;
+
+  isActive: boolean;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreateClientDto {
+
+  tipoDocumento: string;
+
+  numeroDocumento: string;
+
+  nombre: string;
+
+  telefono?: string;
+
+  email?: string;
+
+}
+
+export type UpdateClientDto = Partial<CreateClientDto> & {
+
+  isActive?: boolean;
+
+};
+```
+
+#### **Paso 2: Crear el servicio `src/app/features/clients/services/clients.service.ts`**
+
+Crea la carpeta `frontend/src/app/features/clients/services/` y dentro el archivo `clients.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { Client, CreateClientDto, UpdateClientDto } from '../models/client.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class ClientsService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/clients`;
+
+  // Header de rol para operaciones de escritura en Fase I (antes de JWT en ISS-08)
+
+  private readonly headers = new HttpHeaders({ 'x-user-role': 'ADMIN' });
+
+  // Estado reactivo con Signals
+
+  readonly clients = signal<Client[]>([]);
+
+  readonly total = signal<number>(0);
+
+  readonly loading = signal<boolean>(false);
+
+  loadClients(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Client>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const list = res.data?.items ?? res.data?.rows ?? [];
+
+          this.clients.set(list);
+
+          this.total.set(res.data?.total ?? list.length);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreateClientDto): Observable<ApiResponse<Client>> {
+
+    return this.http
+
+      .post<ApiResponse<Client>>(this.apiUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadClients()));
+
+  }
+
+  update(id: number, dto: UpdateClientDto): Observable<ApiResponse<Client>> {
+
+    return this.http
+
+      .patch<ApiResponse<Client>>(`${this.apiUrl}/${id}`, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadClients()));
+
+  }
+
+  toggleStatus(client: Client): Observable<ApiResponse<Client>> {
+
+    const action = client.isActive ? 'deactivate' : 'activate';
+
+    return this.http
+
+      .patch<ApiResponse<Client>>(
+
+        `${this.apiUrl}/${client.id}/${action}`,
+
+        {},
+
+        { headers: this.headers },
+
+      )
+
+      .pipe(tap(() => this.loadClients()));
+
+  }
+
+}
+```
+
+#### **Paso 3: Crear el componente de página `ClientsPage`**
+
+En tu terminal dentro de `frontend/`, genera el componente con `--flat` para que no te cree carpetas repetidas:
+
+``` bash
+npx ng g c features/clients/pages/clients-page --flat --skip-tests
+```
+
+![](images/clipboard-2061551740.png)
+
+1.  Abre `frontend/src/app/features/clients/pages/clients-page.ts` y escribe la lógica del listado, diálogo modal de creación/edición con **ReactiveForms** y cambio de estado:
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { ClientsService } from '../services/clients.service';
+
+import { Client } from '../models/client.model';
+
+@Component({
+
+  selector: 'app-clients-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './clients-page.html',
+
+  styleUrl: './clients-page.css',
+
+})
+
+export class ClientsPage implements OnInit {
+
+  protected readonly clientsService = inject(ClientsService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingClient = signal<Client | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly documentTypes = [
+
+    { label: 'Cédula de Ciudadanía (CC)', value: 'CC' },
+
+    { label: 'Cédula de Extranjería (CE)', value: 'CE' },
+
+    { label: 'NIT', value: 'NIT' },
+
+    { label: 'Pasaporte (PAS)', value: 'PAS' },
+
+  ];
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    tipoDocumento: ['CC', [Validators.required]],
+
+    numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
+
+    nombre: ['', [Validators.required, Validators.minLength(3)]],
+
+    telefono: [''],
+
+    email: ['', [Validators.email]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.clientsService.loadClients();
+
+  }
+
+  protected openNew(): void {
+
+    this.editingClient.set(null);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      tipoDocumento: 'CC',
+
+      numeroDocumento: '',
+
+      nombre: '',
+
+      telefono: '',
+
+      email: '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(client: Client): void {
+
+    this.editingClient.set(client);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      tipoDocumento: client.tipoDocumento,
+
+      numeroDocumento: client.numeroDocumento,
+
+      nombre: client.nombre,
+
+      telefono: client.telefono ?? '',
+
+      email: client.email ?? '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingClient();
+
+    const request$ = current
+
+      ? this.clientsService.update(current.id, payload)
+
+      : this.clientsService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(
+
+          err?.error?.message ?? 'Error al guardar el arrendatario/cliente.',
+
+        );
+
+      },
+
+    });
+
+  }
+
+  protected onToggleStatus(client: Client): void {
+
+    this.clientsService.toggleStatus(client).subscribe();
+
+  }
+
+}
+```
+
+![](images/clipboard-3663358744.png)
+
+2.   Abre `frontend/src/app/features/clients/pages/clients-page.html` y maqueta la tabla `<p-table>` y el modal `<p-dialog>` de PrimeNG:
+
+``` html
+<div class="space-y-6">
+
+  <!-- Encabezado de página -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Arrendatarios (Clientes)</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-03: Gestión de clientes titulares de contratos de arrendamiento (/api/clients)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="clientsService.loadClients()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Arrendatario"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <!-- Tabla PrimeNG -->
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="clientsService.clients()"
+
+      [loading]="clientsService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Documento</th>
+
+          <th>Nombre Completo</th>
+
+          <th>Teléfono</th>
+
+          <th>Correo Electrónico</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-client>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ client.id }}</td>
+
+          <td>
+
+            <span class="font-semibold text-slate-700">{{ client.tipoDocumento }}</span>
+
+            {{ client.numeroDocumento }}
+
+          </td>
+
+          <td class="font-medium text-slate-800">{{ client.nombre }}</td>
+
+          <td>{{ client.telefono || '—' }}</td>
+
+          <td>{{ client.email || '—' }}</td>
+
+          <td>
+
+            <p-tag
+
+              [value]="client.isActive ? 'Activo' : 'Inactivo'"
+
+              [severity]="client.isActive ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right space-x-1">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(client)"
+
+            />
+
+            <p-button
+
+              [icon]="client.isActive ? 'pi pi-ban' : 'pi pi-check'"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              [severity]="client.isActive ? 'danger' : 'success'"
+
+              [title]="client.isActive ? 'Desactivar' : 'Reactivar'"
+
+              (onClick)="onToggleStatus(client)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="7" class="text-center py-8 text-slate-500">
+
+            No hay arrendatarios registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <!-- Modal Crear / Editar -->
+
+  <p-dialog
+
+    [header]="editingClient() ? 'Editar Arrendatario' : 'Nuevo Arrendatario'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Tipo Documento *</label>
+
+          <p-select
+
+            formControlName="tipoDocumento"
+
+            [options]="documentTypes"
+
+            optionLabel="label"
+
+            optionValue="value"
+
+            appendTo="body"
+
+          />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Número Documento *</label>
+
+          <input pInputText formControlName="numeroDocumento" placeholder="Ej. 1098765432" />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Nombre Completo *</label>
+
+        <input pInputText formControlName="nombre" placeholder="Ej. María Fernanda Gómez" />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Teléfono</label>
+
+          <input pInputText formControlName="telefono" placeholder="Ej. +57 300 123 4567" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Correo Electrónico</label>
+
+          <input pInputText formControlName="email" placeholder="correo@ejemplo.com" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-2291884026.png)
+
+#### **Paso 4: Registrar la ruta `/clients` en `src/app/app.routes.ts`**
+
+Abre `frontend/src/app/app.routes.ts` y añade la ruta `'clients'`:
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard/dashboard';
+
+import { ClientsPage } from './features/clients/pages/clients-page';
+
+export const routes: Routes = [
+
+  {
+
+    path: 'dashboard',
+
+    component: Dashboard,
+
+  },
+
+  {
+
+    path: 'clients',
+
+    component: ClientsPage,
+
+  },
+
+  {
+
+    path: '',
+
+    pathMatch: 'full',
+
+    redirectTo: 'dashboard',
+
+  },
+
+  {
+
+    path: '**',
+
+    redirectTo: 'dashboard',
+
+  },
+
+];
+```
+
+![](images/clipboard-2550296059.png)
