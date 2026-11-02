@@ -2252,3 +2252,2743 @@ export const routes: Routes = [
 ![](images/clipboard-2550296059.png)
 
 ![](images/clipboard-3866739784.png)
+
+### **ISS-04 · Capa 2**
+
+Hagamos primero el módulo de **Tipos de Producto / Inmueble (`/api/product-types`)** y enseguida el de **Propietarios (`/api/propietarios`)**.
+
+#### **Parte A: Módulo `ProductTypes` (`/api/product-types`)**
+
+##### **Paso 1: Crear el modelo `src/app/features/product-types/models/product-type.model.ts`**
+
+Crea la carpeta `frontend/src/app/features/product-types/models/` y dentro el archivo `product-type.model.ts`:
+
+``` typescript
+export interface ProductType {
+
+  id: number;
+
+  name: string;
+
+  description: string | null;
+
+  status: 'active' | 'inactive';
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreateProductTypeDto {
+
+  name: string;
+
+  description?: string | null;
+
+}
+
+export type UpdateProductTypeDto = Partial<CreateProductTypeDto> & {
+
+  status?: 'active' | 'inactive';
+
+};
+```
+
+##### ![](images/clipboard-260081583.png)
+
+##### **Paso 2: Crear el servicio `src/app/features/product-types/services/product-types.service.ts`**
+
+Crea la carpeta `frontend/src/app/features/product-types/services/` y dentro el archivo `product-types.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import {
+
+  CreateProductTypeDto,
+
+  ProductType,
+
+  UpdateProductTypeDto,
+
+} from '../models/product-type.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class ProductTypesService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/product-types`;
+
+  readonly productTypes = signal<ProductType[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadProductTypes(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<ProductType> | ProductType[]>>(
+
+        `${this.apiUrl}?limit=100`,
+
+      )
+
+      .subscribe({
+
+        next: (res) => {
+
+          const data = res.data;
+
+          const list = Array.isArray(data)
+
+            ? data
+
+            : (data?.items ?? data?.rows ?? []);
+
+          this.productTypes.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreateProductTypeDto): Observable<ApiResponse<ProductType>> {
+
+    return this.http
+
+      .post<ApiResponse<ProductType>>(this.apiUrl, dto)
+
+      .pipe(tap(() => this.loadProductTypes()));
+
+  }
+
+  update(id: number, dto: UpdateProductTypeDto): Observable<ApiResponse<ProductType>> {
+
+    return this.http
+
+      .patch<ApiResponse<ProductType>>(`${this.apiUrl}/${id}`, dto)
+
+      .pipe(tap(() => this.loadProductTypes()));
+
+  }
+
+  toggleStatus(item: ProductType): Observable<ApiResponse<ProductType>> {
+
+    const action = item.status === 'active' ? 'deactivate' : 'activate';
+
+    return this.http
+
+      .patch<ApiResponse<ProductType>>(`${this.apiUrl}/${item.id}/${action}`, {})
+
+      .pipe(tap(() => this.loadProductTypes()));
+
+  }
+
+}
+```
+
+##### ![](images/clipboard-253002808.png)
+
+##### **Paso 3: Generar el componente `ProductTypesPage`**
+
+En tu terminal dentro de `frontend/`, ejecuta:
+
+``` bash
+npx ng g c features/product-types/pages/product-types-page --flat --skip-tests
+```
+
+![](images/clipboard-2235562992.png)
+
+1.  Abre `frontend/src/app/features/product-types/pages/product-types-page.ts` y coloca su lógica:
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { TextareaModule } from 'primeng/textarea';
+
+import { TagModule } from 'primeng/tag';
+
+import { ProductTypesService } from '../services/product-types.service';
+
+import { ProductType } from '../models/product-type.model';
+
+@Component({
+
+  selector: 'app-product-types-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    TextareaModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './product-types-page.html',
+
+  styleUrl: './product-types-page.css',
+
+})
+
+export class ProductTypesPage implements OnInit {
+
+  protected readonly productTypesService = inject(ProductTypesService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingItem = signal<ProductType | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    name: ['', [Validators.required, Validators.minLength(3)]],
+
+    description: [''],
+
+  });
+
+  ngOnInit(): void {
+
+    this.productTypesService.loadProductTypes();
+
+  }
+
+  protected openNew(): void {
+
+    this.editingItem.set(null);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({ name: '', description: '' });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(item: ProductType): void {
+
+    this.editingItem.set(item);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      name: item.name,
+
+      description: item.description ?? '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingItem();
+
+    const request$ = current
+
+      ? this.productTypesService.update(current.id, payload)
+
+      : this.productTypesService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(
+
+          err?.error?.message ?? 'Error al guardar el tipo de producto/inmueble.',
+
+        );
+
+      },
+
+    });
+
+  }
+
+  protected onToggleStatus(item: ProductType): void {
+
+    this.productTypesService.toggleStatus(item).subscribe();
+
+  }
+
+}
+```
+
+![](images/clipboard-160069380.png)
+
+2.  Abre `frontend/src/app/features/product-types/pages/product-types-page.html` y escribe su plantilla:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Tipos de Producto / Categorías Inmobiliarias</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-04: Catálogo maestro de clasificación (/api/product-types)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="productTypesService.loadProductTypes()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Tipo"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="productTypesService.productTypes()"
+
+      [loading]="productTypesService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th style="width: 5rem">ID</th>
+
+          <th>Nombre de Categoría</th>
+
+          <th>Descripción</th>
+
+          <th style="width: 8rem">Estado</th>
+
+          <th style="width: 8rem" class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-semibold text-slate-800">{{ item.name }}</td>
+
+          <td class="text-slate-600">{{ item.description || 'Sin descripción' }}</td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.status === 'active' ? 'Activo' : 'Inactivo'"
+
+              [severity]="item.status === 'active' ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right space-x-1">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+            <p-button
+
+              [icon]="item.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              [severity]="item.status === 'active' ? 'danger' : 'success'"
+
+              [title]="item.status === 'active' ? 'Desactivar' : 'Reactivar'"
+
+              (onClick)="onToggleStatus(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="5" class="text-center py-8 text-slate-500">
+
+            No hay tipos de producto registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Tipo de Producto' : 'Nuevo Tipo de Producto'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '30rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Nombre *</label>
+
+        <input pInputText formControlName="name" placeholder="Ej. Apartamento Residencial" />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Descripción</label>
+
+        <textarea
+
+          pTextarea
+
+          formControlName="description"
+
+          rows="3"
+
+          placeholder="Descripción opcional de la categoría..."
+
+        ></textarea>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-1247638106.png)
+
+#### **Parte B: Módulo `Propietarios` (`/api/propietarios`) — Necesario para crear Inmuebles en el ISS-05**
+
+Como en **Arrendo360** todo inmueble pertenece a un **Propietario**, creemos de una vez su servicio y página (tiene exactamente los mismos campos que `Client`: `tipoDocumento`, `numeroDocumento`, `nombre`, `telefono`, `email`, `isActive`).
+
+##### **Paso 4: Crear modelo y servicio de Propietarios**
+
+1.  Crea `frontend/src/app/features/propietarios/models/propietario.model.ts`:
+
+``` typescript
+export interface Propietario {
+
+  id: number;
+
+  tipoDocumento: string;
+
+  numeroDocumento: string;
+
+  nombre: string;
+
+  telefono: string;
+
+  email: string;
+
+  isActive: boolean;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreatePropietarioDto {
+
+  tipoDocumento: string;
+
+  numeroDocumento: string;
+
+  nombre: string;
+
+  telefono?: string;
+
+  email?: string;
+
+}
+
+export type UpdatePropietarioDto = Partial<CreatePropietarioDto> & {
+
+  isActive?: boolean;
+
+};
+```
+
+![](images/clipboard-3686961108.png)
+
+2.  Crea `frontend/src/app/features/propietarios/services/propietarios.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import {
+
+  CreatePropietarioDto,
+
+  Propietario,
+
+  UpdatePropietarioDto,
+
+} from '../models/propietario.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class PropietariosService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/propietarios`;
+
+  private readonly headers = new HttpHeaders({ 'x-user-role': 'ADMIN' });
+
+  readonly propietarios = signal<Propietario[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadPropietarios(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Propietario>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const list = res.data?.items ?? res.data?.rows ?? [];
+
+          this.propietarios.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreatePropietarioDto): Observable<ApiResponse<Propietario>> {
+
+    return this.http
+
+      .post<ApiResponse<Propietario>>(this.apiUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadPropietarios()));
+
+  }
+
+  update(id: number, dto: UpdatePropietarioDto): Observable<ApiResponse<Propietario>> {
+
+    return this.http
+
+      .patch<ApiResponse<Propietario>>(`${this.apiUrl}/${id}`, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadPropietarios()));
+
+  }
+
+}
+```
+
+##### ![](images/clipboard-3719659854.png)
+
+##### **Paso 5: Generar el componente `PropietariosPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/propietarios/pages/propietarios-page --flat --skip-tests
+```
+
+![](images/clipboard-3234027105.png)
+
+1.  En `frontend/src/app/features/propietarios/pages/propietarios-page.ts`:
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { PropietariosService } from '../services/propietarios.service';
+
+import { Propietario } from '../models/propietario.model';
+
+@Component({
+
+  selector: 'app-propietarios-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './propietarios-page.html',
+
+  styleUrl: './propietarios-page.css',
+
+})
+
+export class PropietariosPage implements OnInit {
+
+  protected readonly propietariosService = inject(PropietariosService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingItem = signal<Propietario | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly documentTypes = [
+
+    { label: 'Cédula de Ciudadanía (CC)', value: 'CC' },
+
+    { label: 'Cédula de Extranjería (CE)', value: 'CE' },
+
+    { label: 'NIT', value: 'NIT' },
+
+  ];
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    tipoDocumento: ['CC', [Validators.required]],
+
+    numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
+
+    nombre: ['', [Validators.required, Validators.minLength(3)]],
+
+    telefono: [''],
+
+    email: ['', [Validators.email]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.propietariosService.loadPropietarios();
+
+  }
+
+  protected openNew(): void {
+
+    this.editingItem.set(null);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      tipoDocumento: 'CC',
+
+      numeroDocumento: '',
+
+      nombre: '',
+
+      telefono: '',
+
+      email: '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(item: Propietario): void {
+
+    this.editingItem.set(item);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      tipoDocumento: item.tipoDocumento,
+
+      numeroDocumento: item.numeroDocumento,
+
+      nombre: item.nombre,
+
+      telefono: item.telefono ?? '',
+
+      email: item.email ?? '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingItem();
+
+    const request$ = current
+
+      ? this.propietariosService.update(current.id, payload)
+
+      : this.propietariosService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al guardar el propietario.');
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-804089588.png)
+
+2.  En `frontend/src/app/features/propietarios/pages/propietarios-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Propietarios de Inmuebles</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-04: Gestión de titulares de inmuebles para dispersión de pagos (/api/propietarios)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="propietariosService.loadPropietarios()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Propietario"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="propietariosService.propietarios()"
+
+      [loading]="propietariosService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Documento</th>
+
+          <th>Nombre Completo</th>
+
+          <th>Teléfono</th>
+
+          <th>Correo Electrónico</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td>
+
+            <span class="font-semibold text-slate-700">{{ item.tipoDocumento }}</span>
+
+            {{ item.numeroDocumento }}
+
+          </td>
+
+          <td class="font-medium text-slate-800">{{ item.nombre }}</td>
+
+          <td>{{ item.telefono || '—' }}</td>
+
+          <td>{{ item.email || '—' }}</td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.isActive ? 'Activo' : 'Inactivo'"
+
+              [severity]="item.isActive ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Propietario' : 'Nuevo Propietario'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Tipo Documento *</label>
+
+          <p-select
+
+            formControlName="tipoDocumento"
+
+            [options]="documentTypes"
+
+            optionLabel="label"
+
+            optionValue="value"
+
+            appendTo="body"
+
+          />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Número Documento *</label>
+
+          <input pInputText formControlName="numeroDocumento" placeholder="Ej. 1020304050" />
+
+        </div>
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Nombre Completo *</label>
+
+        <input pInputText formControlName="nombre" placeholder="Ej. Carlos Rodríguez" />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Teléfono</label>
+
+          <input pInputText formControlName="telefono" placeholder="Ej. +57 300 123 4567" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Correo Electrónico</label>
+
+          <input pInputText formControlName="email" placeholder="carlos@ejemplo.com" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-3595908251.png)
+
+#### **Paso 6: Registrar ambas rutas en `src/app/app.routes.ts`**
+
+Abre `frontend/src/app/app.routes.ts` y agrega `'product-types'` y `'propietarios'`:
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard/dashboard';
+
+import { ClientsPage } from './features/clients/pages/clients-page';
+
+import { ProductTypesPage } from './features/product-types/pages/product-types-page';
+
+import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
+
+export const routes: Routes = [
+
+  {
+
+    path: 'dashboard',
+
+    component: Dashboard,
+
+  },
+
+  {
+
+    path: 'clients',
+
+    component: ClientsPage,
+
+  },
+
+  {
+
+    path: 'propietarios',
+
+    component: PropietariosPage,
+
+  },
+
+  {
+
+    path: 'product-types',
+
+    component: ProductTypesPage,
+
+  },
+
+  {
+
+    path: '',
+
+    pathMatch: 'full',
+
+    redirectTo: 'dashboard',
+
+  },
+
+  {
+
+    path: '**',
+
+    redirectTo: 'dashboard',
+
+  },
+
+];
+```
+
+![**TIPO DE PRODUCTO**](images/clipboard-3622082618.png)
+
+![](images/clipboard-2776340496.png)
+
+**PROPETARIOS**
+
+![](images/clipboard-1394459957.png)
+
+### **ISS-05 · Capa 2**
+
+Construyamos las dos pantallas de este hito: **Inmuebles (`/api/inmuebles`)** y **Productos (`/api/products`)**.
+
+#### **Parte A: Módulo `Inmuebles` (`/api/inmuebles`) vinculado a `Propietarios`**
+
+##### **Paso 1: Crear el modelo `src/app/features/inmuebles/models/inmueble.model.ts`**
+
+Crea la carpeta `frontend/src/app/features/inmuebles/models/` y dentro el archivo `inmueble.model.ts` (espejo de `InmuebleResponseDto`):
+
+``` typescript
+export interface Inmueble {
+
+  id: number;
+
+  propietarioId: number;
+
+  nombre: string;
+
+  descripcion: string;
+
+  isActive: boolean;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreateInmuebleDto {
+
+  propietarioId: number;
+
+  nombre: string;
+
+  descripcion?: string;
+
+}
+
+export type UpdateInmuebleDto = Partial<CreateInmuebleDto> & {
+
+  isActive?: boolean;
+
+};
+```
+
+##### ![](images/clipboard-853150022.png)
+
+##### **Paso 2: Crear el servicio `src/app/features/inmuebles/services/inmuebles.service.ts`**
+
+Crea `frontend/src/app/features/inmuebles/services/inmuebles.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+
+import { CreateInmuebleDto, Inmueble, UpdateInmuebleDto } from '../models/inmueble.model';
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class InmueblesService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/inmuebles`;
+
+  private readonly headers = new HttpHeaders({ 'x-user-role': 'ADMIN' });
+
+  readonly inmuebles = signal<Inmueble[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadInmuebles(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<PaginatedResponse<Inmueble>>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const list = res.data?.items ?? res.data?.rows ?? [];
+
+          this.inmuebles.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreateInmuebleDto): Observable<ApiResponse<Inmueble>> {
+
+    return this.http
+
+      .post<ApiResponse<Inmueble>>(this.apiUrl, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadInmuebles()));
+
+  }
+
+  update(id: number, dto: UpdateInmuebleDto): Observable<ApiResponse<Inmueble>> {
+
+    return this.http
+
+      .patch<ApiResponse<Inmueble>>(`${this.apiUrl}/${id}`, dto, { headers: this.headers })
+
+      .pipe(tap(() => this.loadInmuebles()));
+
+  }
+
+}
+```
+
+##### ![](images/clipboard-3389712234.png)
+
+##### **Paso 3: Generar el componente `InmueblesPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/inmuebles/pages/inmuebles-page --flat --skip-tests
+```
+
+![](images/clipboard-3608244544.png)
+
+1.  En `frontend/src/app/features/inmuebles/pages/inmuebles-page.ts`, inyectamos tanto `InmueblesService` como `PropietariosService` para poblar el selector `<p-select>` y resolver el nombre del propietario:
+
+``` typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { TextareaModule } from 'primeng/textarea';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { InmueblesService } from '../services/inmuebles.service';
+
+import { PropietariosService } from '../../propietarios/services/propietarios.service';
+
+import { Inmueble } from '../models/inmueble.model';
+
+@Component({
+
+  selector: 'app-inmuebles-page',
+
+  imports: [
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    TextareaModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './inmuebles-page.html',
+
+  styleUrl: './inmuebles-page.css',
+
+})
+
+export class InmueblesPage implements OnInit {
+
+  protected readonly inmueblesService = inject(InmueblesService);
+
+  protected readonly propietariosService = inject(PropietariosService);
+
+  private readonly fb = inject(FormBuilder);
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingItem = signal<Inmueble | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    propietarioId: [0, [Validators.required, Validators.min(1)]],
+
+    nombre: ['', [Validators.required, Validators.minLength(3)]],
+
+    descripcion: [''],
+
+  });
+
+  ngOnInit(): void {
+
+    this.inmueblesService.loadInmuebles();
+
+    this.propietariosService.loadPropietarios();
+
+  }
+
+  protected getPropietarioNombre(propietarioId: number): string {
+
+    const found = this.propietariosService
+
+      .propietarios()
+
+      .find((p) => p.id === propietarioId);
+
+    return found ? `${found.nombre} (${found.numeroDocumento})` : `ID #${propietarioId}`;
+
+  }
+
+  protected openNew(): void {
+
+    this.editingItem.set(null);
+
+    this.errorMsg.set(null);
+
+    const firstOwner = this.propietariosService.propietarios()[0]?.id ?? 0;
+
+    this.form.reset({
+
+      propietarioId: firstOwner,
+
+      nombre: '',
+
+      descripcion: '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(item: Inmueble): void {
+
+    this.editingItem.set(item);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      propietarioId: item.propietarioId,
+
+      nombre: item.nombre,
+
+      descripcion: item.descripcion ?? '',
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingItem();
+
+    const request$ = current
+
+      ? this.inmueblesService.update(current.id, payload)
+
+      : this.inmueblesService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al guardar el inmueble.');
+
+      },
+
+    });
+
+  }
+
+}
+```
+
+![](images/clipboard-2136580867.png)
+
+2.  En `frontend/src/app/features/inmuebles/pages/inmuebles-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Catálogo de Inmuebles</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-05: Propiedades registradas y vinculadas a su Propietario titular (/api/inmuebles)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="inmueblesService.loadInmuebles()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Inmueble"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="inmueblesService.inmuebles()"
+
+      [loading]="inmueblesService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th style="width: 5rem">ID</th>
+
+          <th>Inmueble</th>
+
+          <th>Descripción</th>
+
+          <th>Propietario Titular</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-semibold text-slate-800">{{ item.nombre }}</td>
+
+          <td class="text-slate-600 text-sm">{{ item.descripcion || '—' }}</td>
+
+          <td>
+
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+
+              <i class="pi pi-id-card text-slate-500"></i>
+
+              {{ getPropietarioNombre(item.propietarioId) }}
+
+            </span>
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.isActive ? 'Disponible / Activo' : 'Inactivo'"
+
+              [severity]="item.isActive ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="6" class="text-center py-8 text-slate-500">
+
+            No hay inmuebles registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Inmueble' : 'Nuevo Inmueble'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '32rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Propietario Titular *</label>
+
+        <p-select
+
+          formControlName="propietarioId"
+
+          [options]="propietariosService.propietarios()"
+
+          optionLabel="nombre"
+
+          optionValue="id"
+
+          placeholder="Seleccione un propietario"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Nombre / Identificador del Inmueble *</label>
+
+        <input pInputText formControlName="nombre" placeholder="Ej. Apartamento 302 Edificio Los Sauces" />
+
+      </div>
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Descripción y Características</label>
+
+        <textarea
+
+          pTextarea
+
+          formControlName="descripcion"
+
+          rows="3"
+
+          placeholder="Ej. 3 habitaciones, 2 baños, parqueadero privado..."
+
+        ></textarea>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-853530632.png)
+
+#### **Parte B: Módulo `Products` (`/api/products`) vinculado a `ProductTypes`**
+
+Fíjate en un detalle muy interesante de tu `products.controller.ts`: Cuando haces `GET /api/products`, el backend devuelve `{ products: [...], total, page, limit }` dentro de `res.data`. ¡Lo contemplaremos en el servicio!
+
+##### **Paso 4: Crear el modelo `src/app/features/products/models/product.model.ts`**
+
+Crea `frontend/src/app/features/products/models/product.model.ts`:
+
+``` typescript
+import { ProductType } from '../../product-types/models/product-type.model';
+
+export interface Product {
+
+  id: number;
+
+  name: string;
+
+  brand: string;
+
+  price: number;
+
+  min_stock: number;
+
+  quantity: number;
+
+  product_type_id: number;
+
+  status: 'active' | 'inactive';
+
+  product_type?: ProductType;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+}
+
+export interface CreateProductDto {
+
+  name: string;
+
+  brand: string;
+
+  price: number;
+
+  min_stock?: number;
+
+  quantity?: number;
+
+  product_type_id: number;
+
+  status?: 'active' | 'inactive';
+
+}
+
+export type UpdateProductDto = Partial<CreateProductDto>;
+```
+
+##### ![](images/clipboard-4155651058.png)
+
+##### **Paso 5: Crear el servicio `src/app/features/products/services/products.service.ts`**
+
+Crea `frontend/src/app/features/products/services/products.service.ts`:
+
+``` typescript
+import { Injectable, inject, signal } from '@angular/core';
+
+import { HttpClient } from '@angular/common/http';
+
+import { Observable, tap } from 'rxjs';
+
+import { environment } from '../../../../environments/environment';
+
+import { ApiResponse } from '../../../core/models/api-response.model';
+
+import { CreateProductDto, Product, UpdateProductDto } from '../models/product.model';
+
+interface ProductsListPayload {
+
+  products?: Product[];
+
+  items?: Product[];
+
+  total: number;
+
+  page: number;
+
+  limit: number;
+
+}
+
+@Injectable({
+
+  providedIn: 'root',
+
+})
+
+export class ProductsService {
+
+  private readonly http = inject(HttpClient);
+
+  private readonly apiUrl = `${environment.apiUrl}/products`;
+
+  readonly products = signal<Product[]>([]);
+
+  readonly loading = signal<boolean>(false);
+
+  loadProducts(): void {
+
+    this.loading.set(true);
+
+    this.http
+
+      .get<ApiResponse<ProductsListPayload>>(`${this.apiUrl}?limit=100`)
+
+      .subscribe({
+
+        next: (res) => {
+
+          const list = res.data?.products ?? res.data?.items ?? [];
+
+          this.products.set(list);
+
+          this.loading.set(false);
+
+        },
+
+        error: () => {
+
+          this.loading.set(false);
+
+        },
+
+      });
+
+  }
+
+  create(dto: CreateProductDto): Observable<ApiResponse<{ product: Product }>> {
+
+    return this.http
+
+      .post<ApiResponse<{ product: Product }>>(this.apiUrl, dto)
+
+      .pipe(tap(() => this.loadProducts()));
+
+  }
+
+  update(id: number, dto: UpdateProductDto): Observable<ApiResponse<{ product: Product }>> {
+
+    return this.http
+
+      .patch<ApiResponse<{ product: Product }>>(`${this.apiUrl}/${id}`, dto)
+
+      .pipe(tap(() => this.loadProducts()));
+
+  }
+
+  toggleStatus(item: Product): Observable<ApiResponse<{ product: Product }>> {
+
+    const action = item.status === 'active' ? 'deactivate' : 'activate';
+
+    return this.http
+
+      .patch<ApiResponse<{ product: Product }>>(`${this.apiUrl}/${item.id}/${action}`, {})
+
+      .pipe(tap(() => this.loadProducts()));
+
+  }
+
+}
+```
+
+##### ![](images/clipboard-560353313.png)
+
+##### **Paso 6: Generar el componente `ProductsPage`**
+
+En tu terminal dentro de `frontend/`:
+
+``` bash
+npx ng g c features/products/pages/products-page --flat --skip-tests
+```
+
+![](images/clipboard-94385857.png)
+
+1.  En `frontend/src/app/features/products/pages/products-page.ts`, usamos `computed()` para filtrar solo los `ProductTypes` activos:
+
+``` typescript
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+
+import { DecimalPipe } from '@angular/common';
+
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
+import { TableModule } from 'primeng/table';
+
+import { ButtonModule } from 'primeng/button';
+
+import { DialogModule } from 'primeng/dialog';
+
+import { InputTextModule } from 'primeng/inputtext';
+
+import { InputNumberModule } from 'primeng/inputnumber';
+
+import { SelectModule } from 'primeng/select';
+
+import { TagModule } from 'primeng/tag';
+
+import { ProductsService } from '../services/products.service';
+
+import { ProductTypesService } from '../../product-types/services/product-types.service';
+
+import { Product } from '../models/product.model';
+
+@Component({
+
+  selector: 'app-products-page',
+
+  imports: [
+
+    DecimalPipe,
+
+    ReactiveFormsModule,
+
+    TableModule,
+
+    ButtonModule,
+
+    DialogModule,
+
+    InputTextModule,
+
+    InputNumberModule,
+
+    SelectModule,
+
+    TagModule,
+
+  ],
+
+  templateUrl: './products-page.html',
+
+  styleUrl: './products-page.css',
+
+})
+
+export class ProductsPage implements OnInit {
+
+  protected readonly productsService = inject(ProductsService);
+
+  protected readonly productTypesService = inject(ProductTypesService);
+
+  private readonly fb = inject(FormBuilder);
+
+  // Signal computado: solo permite elegir tipos de producto activos al crear/editar
+
+  protected readonly activeProductTypes = computed(() =>
+
+    this.productTypesService.productTypes().filter((t) => t.status === 'active'),
+
+  );
+
+  protected readonly dialogVisible = signal(false);
+
+  protected readonly editingItem = signal<Product | null>(null);
+
+  protected readonly saving = signal(false);
+
+  protected readonly errorMsg = signal<string | null>(null);
+
+  protected readonly form = this.fb.nonNullable.group({
+
+    name: ['', [Validators.required, Validators.minLength(2)]],
+
+    brand: ['', [Validators.required, Validators.minLength(2)]],
+
+    price: [0, [Validators.required, Validators.min(0.01)]],
+
+    quantity: [0, [Validators.required, Validators.min(0)]],
+
+    min_stock: [5, [Validators.required, Validators.min(0)]],
+
+    product_type_id: [0, [Validators.required, Validators.min(1)]],
+
+  });
+
+  ngOnInit(): void {
+
+    this.productsService.loadProducts();
+
+    this.productTypesService.loadProductTypes();
+
+  }
+
+  protected getTypeName(item: Product): string {
+
+    if (item.product_type?.name) return item.product_type.name;
+
+    const found = this.productTypesService
+
+      .productTypes()
+
+      .find((t) => t.id === item.product_type_id);
+
+    return found ? found.name : `Tipo #${item.product_type_id}`;
+
+  }
+
+  protected openNew(): void {
+
+    this.editingItem.set(null);
+
+    this.errorMsg.set(null);
+
+    const firstType = this.activeProductTypes()[0]?.id ?? 0;
+
+    this.form.reset({
+
+      name: '',
+
+      brand: '',
+
+      price: 100000,
+
+      quantity: 10,
+
+      min_stock: 2,
+
+      product_type_id: firstType,
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected openEdit(item: Product): void {
+
+    this.editingItem.set(item);
+
+    this.errorMsg.set(null);
+
+    this.form.reset({
+
+      name: item.name,
+
+      brand: item.brand,
+
+      price: Number(item.price),
+
+      quantity: Number(item.quantity),
+
+      min_stock: Number(item.min_stock),
+
+      product_type_id: item.product_type_id,
+
+    });
+
+    this.dialogVisible.set(true);
+
+  }
+
+  protected save(): void {
+
+    if (this.form.invalid) {
+
+      this.form.markAllAsTouched();
+
+      return;
+
+    }
+
+    this.saving.set(true);
+
+    this.errorMsg.set(null);
+
+    const payload = this.form.getRawValue();
+
+    const current = this.editingItem();
+
+    const request$ = current
+
+      ? this.productsService.update(current.id, payload)
+
+      : this.productsService.create(payload);
+
+    request$.subscribe({
+
+      next: () => {
+
+        this.saving.set(false);
+
+        this.dialogVisible.set(false);
+
+      },
+
+      error: (err) => {
+
+        this.saving.set(false);
+
+        this.errorMsg.set(err?.error?.message ?? 'Error al guardar el producto.');
+
+      },
+
+    });
+
+  }
+
+  protected onToggleStatus(item: Product): void {
+
+    this.productsService.toggleStatus(item).subscribe();
+
+  }
+
+}
+```
+
+![](images/clipboard-2478371493.png)
+
+2.  En `frontend/src/app/features/products/pages/products-page.html`:
+
+``` html
+<div class="space-y-6">
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
+
+    <div>
+
+      <h2 class="text-xl font-bold text-slate-800">Catálogo de Productos e Inventario</h2>
+
+      <p class="text-sm text-slate-500 mt-1">
+
+        ISS-05: Gestión de productos, precios, control de stock mínimo y categoría (/api/products)
+
+      </p>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+      <p-button
+
+        label="Recargar"
+
+        icon="pi pi-refresh"
+
+        severity="secondary"
+
+        [outlined]="true"
+
+        (onClick)="productsService.loadProducts()"
+
+      />
+
+      <p-button
+
+        label="Nuevo Producto"
+
+        icon="pi pi-plus"
+
+        severity="success"
+
+        (onClick)="openNew()"
+
+      />
+
+    </div>
+
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+
+    <p-table
+
+      [value]="productsService.products()"
+
+      [loading]="productsService.loading()"
+
+      [paginator]="true"
+
+      [rows]="10"
+
+      [rowHover]="true"
+
+      dataKey="id"
+
+    >
+
+      <ng-template #header>
+
+        <tr>
+
+          <th>ID</th>
+
+          <th>Producto</th>
+
+          <th>Marca</th>
+
+          <th>Categoría</th>
+
+          <th>Precio</th>
+
+          <th>Stock Actual / Mín.</th>
+
+          <th>Estado</th>
+
+          <th class="text-right">Acciones</th>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #body let-item>
+
+        <tr>
+
+          <td class="font-mono text-xs text-slate-500">#{{ item.id }}</td>
+
+          <td class="font-semibold text-slate-800">{{ item.name }}</td>
+
+          <td>{{ item.brand }}</td>
+
+          <td>
+
+            <span class="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+
+              {{ getTypeName(item) }}
+
+            </span>
+
+          </td>
+
+          <td class="font-mono font-medium text-emerald-700">
+
+            ${{ item.price | number: '1.0-2' }}
+
+          </td>
+
+          <td>
+
+            <div class="flex items-center gap-2">
+
+              <span class="font-semibold">{{ item.quantity }}</span>
+
+              <span class="text-xs text-slate-400">/ mín {{ item.min_stock }}</span>
+
+              @if (item.quantity <= item.min_stock) {
+
+                <p-tag value="Stock Bajo" severity="warn" />
+
+              }
+
+            </div>
+
+          </td>
+
+          <td>
+
+            <p-tag
+
+              [value]="item.status === 'active' ? 'Activo' : 'Inactivo'"
+
+              [severity]="item.status === 'active' ? 'success' : 'danger'"
+
+            />
+
+          </td>
+
+          <td class="text-right space-x-1">
+
+            <p-button
+
+              icon="pi pi-pencil"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              severity="info"
+
+              title="Editar"
+
+              (onClick)="openEdit(item)"
+
+            />
+
+            <p-button
+
+              [icon]="item.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
+
+              [rounded]="true"
+
+              [text]="true"
+
+              [severity]="item.status === 'active' ? 'danger' : 'success'"
+
+              [title]="item.status === 'active' ? 'Desactivar' : 'Reactivar'"
+
+              (onClick)="onToggleStatus(item)"
+
+            />
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+      <ng-template #emptymessage>
+
+        <tr>
+
+          <td colspan="8" class="text-center py-8 text-slate-500">
+
+            No hay productos registrados aún.
+
+          </td>
+
+        </tr>
+
+      </ng-template>
+
+    </p-table>
+
+  </div>
+
+  <p-dialog
+
+    [header]="editingItem() ? 'Editar Producto' : 'Nuevo Producto'"
+
+    [visible]="dialogVisible()"
+
+    (visibleChange)="dialogVisible.set($event)"
+
+    [modal]="true"
+
+    [style]="{ width: '34rem' }"
+
+  >
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4 pt-2">
+
+      @if (errorMsg()) {
+
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+
+          {{ errorMsg() }}
+
+        </div>
+
+      }
+
+      <div class="flex flex-col gap-1">
+
+        <label class="text-xs font-semibold text-slate-600">Tipo de Producto (Solo Activos) *</label>
+
+        <p-select
+
+          formControlName="product_type_id"
+
+          [options]="activeProductTypes()"
+
+          optionLabel="name"
+
+          optionValue="id"
+
+          placeholder="Seleccione una categoría activa"
+
+          appendTo="body"
+
+        />
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Nombre del Producto *</label>
+
+          <input pInputText formControlName="name" placeholder="Ej. Kit Mantenimiento Eléctrico" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Marca / Proveedor *</label>
+
+          <input pInputText formControlName="brand" placeholder="Ej. HomePro" />
+
+        </div>
+
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Precio Unitario *</label>
+
+          <p-inputnumber formControlName="price" mode="decimal" [min]="0.01" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Cantidad Stock *</label>
+
+          <p-inputnumber formControlName="quantity" [min]="0" />
+
+        </div>
+
+        <div class="flex flex-col gap-1">
+
+          <label class="text-xs font-semibold text-slate-600">Stock Mínimo *</label>
+
+          <p-inputnumber formControlName="min_stock" [min]="0" />
+
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-4 border-t border-slate-200">
+
+        <p-button
+
+          label="Cancelar"
+
+          severity="secondary"
+
+          [text]="true"
+
+          (onClick)="dialogVisible.set(false)"
+
+        />
+
+        <p-button
+
+          label="Guardar"
+
+          icon="pi pi-check"
+
+          severity="success"
+
+          type="submit"
+
+          [loading]="saving()"
+
+        />
+
+      </div>
+
+    </form>
+
+  </p-dialog>
+
+</div>
+```
+
+#### ![](images/clipboard-1795919267.png)
+
+#### **Paso 7: Registrar `/inmuebles` y `/products` en `src/app/app.routes.ts`**
+
+Abre `frontend/src/app/app.routes.ts` y añade las dos rutas nuevas:
+
+``` typescript
+import { Routes } from '@angular/router';
+
+import { Dashboard } from './features/dashboard/dashboard/dashboard';
+
+import { ClientsPage } from './features/clients/pages/clients-page';
+
+import { ProductTypesPage } from './features/product-types/pages/product-types-page';
+
+import { PropietariosPage } from './features/propietarios/pages/propietarios-page';
+
+import { InmueblesPage } from './features/inmuebles/pages/inmuebles-page';
+
+import { ProductsPage } from './features/products/pages/products-page';
+
+export const routes: Routes = [
+
+  { path: 'dashboard', component: Dashboard },
+
+  { path: 'clients', component: ClientsPage },
+
+  { path: 'propietarios', component: PropietariosPage },
+
+  { path: 'inmuebles', component: InmueblesPage },
+
+  { path: 'product-types', component: ProductTypesPage },
+
+  { path: 'products', component: ProductsPage },
+
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+
+  { path: '**', redirectTo: 'dashboard' },
+
+];
+```
+
+![](images/clipboard-404254680.png)
+
+**INMUEBLE**
+
+![](images/clipboard-169866896.png)
+
+**PRODUCTOS**
+
+![](images/clipboard-173189686.png)
