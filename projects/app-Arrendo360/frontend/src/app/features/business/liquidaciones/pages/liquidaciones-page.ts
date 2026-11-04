@@ -9,8 +9,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
-import { environment } from '../../../../environments/environment';
-import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+import { environment } from '../../../../../environments/environment';
+import { ApiResponse, PaginatedResponse } from '../../../../core/models/api-response.model';
 import { CobrosService } from '../../cobros/services/cobros.service';
 import { PropietariosService } from '../../propietarios/services/propietarios.service';
 

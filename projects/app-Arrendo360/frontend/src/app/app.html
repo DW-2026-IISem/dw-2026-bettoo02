@@ -1,22 +1,32 @@
-<div class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-  <!-- Cabecera con input y output conectados -->
-  <app-header
-    [sidebarOpen]="sidebarOpen()"
-    (toggleSidebar)="onToggleSidebar()"
-  />
+@if (authService.isAuthenticated()) {
+  <div class="min-h-screen flex flex-col bg-slate-100/80 text-slate-800 antialiased">
+    <!-- Cabecera corporativa con input y output conectados -->
+    <app-header
+      [sidebarOpen]="sidebarOpen()"
+      (toggleSidebar)="onToggleSidebar()"
+    />
 
-  <!-- Cuerpo principal -->
+    <!-- Cuerpo principal -->
+    <div class="flex flex-1 overflow-hidden">
+      @if (sidebarOpen()) {
+        <app-aside />
+      }
 
-  <div class="flex flex-1 overflow-hidden">
-    @if (sidebarOpen()) {
-      <app-aside />
-    }
+      <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
+        <div class="max-w-7xl mx-auto">
+          <router-outlet />
+        </div>
+      </main>
+    </div>
 
-    <main class="flex-1 p-6 overflow-y-auto">
-      <div class="max-w-7xl mx-auto">
-        <router-outlet />
-      </div>
-    </main>
+    <app-footer />
   </div>
-  <app-footer />
-</div>
+} @else {
+  <!-- Lienzo dedicado a pantalla completa para Autenticación cuando no hay sesión activa -->
+  <main class="min-h-screen bg-slate-950 text-slate-800 flex items-center justify-center p-4 lg:p-8 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/40 via-slate-950 to-slate-950 pointer-events-none"></div>
+    <div class="w-full max-w-5xl relative z-10">
+      <router-outlet />
+    </div>
+  </main>
+}

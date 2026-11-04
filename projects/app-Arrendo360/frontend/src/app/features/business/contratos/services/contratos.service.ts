@@ -1,8 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+import { environment } from '../../../../../environments/environment';
+import { ApiResponse, PaginatedResponse } from '../../../../core/models/api-response.model';
 import { Contrato, CreateContratoDto, UpdateContratoDto } from '../models/contrato.model';
 
 @Injectable({

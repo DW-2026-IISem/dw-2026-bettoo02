@@ -3,12 +3,12 @@ import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { HealthService } from '../../../core/services/health.service';
-import { ClientsService } from '../../clients/services/clients.service';
-import { InmueblesService } from '../../inmuebles/services/inmuebles.service';
-import { ContratosService } from '../../contratos/services/contratos.service';
-import { CobrosService } from '../../cobros/services/cobros.service';
-import { ProductsService } from '../../products/services/products.service';
-import { SalesService } from '../../sales/services/sales.service';
+import { ClientsService } from '../../business/clients/services/clients.service';
+import { InmueblesService } from '../../business/inmuebles/services/inmuebles.service';
+import { ContratosService } from '../../business/contratos/services/contratos.service';
+import { CobrosService } from '../../business/cobros/services/cobros.service';
+import { ProductsService } from '../../business/products/services/products.service';
+import { SalesService } from '../../business/sales/services/sales.service';
 
 @Component({
   selector: 'app-dashboard',

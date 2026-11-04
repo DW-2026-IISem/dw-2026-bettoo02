@@ -4,9 +4,9 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 import { Observable, tap } from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
+import { environment } from '../../../../../environments/environment';
 
-import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+import { ApiResponse, PaginatedResponse } from '../../../../core/models/api-response.model';
 
 import { Client, CreateClientDto, UpdateClientDto } from '../models/client.model';
 

@@ -1,141 +1,162 @@
 <div class="space-y-6">
-
-  <!-- Cabecera -->
-
-  <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex items-center justify-between">
-
-    <div>
-
-      <h2 class="text-xl font-bold text-slate-800">Panel Ejecutivo — Arrendo360</h2>
-
-      <p class="text-sm text-slate-500 mt-1">
-
-        ISS-07: Resumen operativo e indicadores reactivos con Signals computed()
-
+  <!-- Banner Hero Ejecutivo -->
+  <div class="rounded-2xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-6 lg:p-8 shadow-lg border border-emerald-800/30 flex flex-wrap items-center justify-between gap-4">
+    <div class="space-y-1.5">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
+        <i class="pi pi-sparkles text-xs"></i>
+        <span>Centro de Control Inmobiliario y Comercial</span>
+      </div>
+      <h2 class="text-2xl lg:text-3xl font-extrabold tracking-tight">Panel Ejecutivo — Arrendo360</h2>
+      <p class="text-sm text-slate-300">
+        Indicadores operativos en tiempo real calculados con Signals <code class="text-emerald-300 font-mono">computed()</code> sobre tu base de datos MySQL.
       </p>
-
     </div>
 
     <div class="flex items-center gap-3">
-
       @if (healthService.isOnline()) {
-
-        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-xs border border-emerald-200">
-
-          <i class="pi pi-check-circle"></i>
-
-          API Conectada
-
+        <span class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-200 font-semibold text-xs border border-emerald-400/30">
+          <i class="pi pi-check-circle text-emerald-400"></i>
+          Backend Conectado
         </span>
-
       }
-
       <p-button
-
-        label="Actualizar KPIs"
-
+        label="Sincronizar KPIs"
         icon="pi pi-refresh"
-
         severity="success"
-
         [loading]="healthService.checking()"
-
         (onClick)="refreshAll()"
-
       />
-
     </div>
-
   </div>
 
-  <!-- Tarjetas de KPIs (Grid 4 columnas) -->
-
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
+  <!-- Tarjetas de KPIs (Grid 4 columnas con elevación) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
     <!-- KPI 1: Arrendatarios -->
-
-    <a routerLink="/clients" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
-
+    <a
+      routerLink="/clients"
+      class="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-emerald-400 hover:-translate-y-0.5 transition-all cursor-pointer"
+    >
       <div class="flex items-center justify-between">
-
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Clientes Activos</span>
-
-        <i class="pi pi-users text-emerald-600 text-xl"></i>
-
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Clientes Activos</span>
+        <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white text-emerald-600 transition-colors">
+          <i class="pi pi-users text-lg"></i>
+        </div>
       </div>
-
-      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeClientsCount() }}</p>
-
-      <p class="text-xs text-slate-500 mt-1">De {{ clientsService.clients().length }} registrados</p>
-
+      <p class="text-3xl font-extrabold text-slate-800 mt-3">{{ activeClientsCount() }}</p>
+      <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+        <i class="pi pi-arrow-up-right text-emerald-600"></i>
+        <span>De {{ clientsService.clients().length }} arrendatarios registrados</span>
+      </p>
     </a>
 
     <!-- KPI 2: Inmuebles y Contratos -->
-
-    <a routerLink="/contratos" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
-
+    <a
+      routerLink="/contratos"
+      class="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-blue-400 hover:-translate-y-0.5 transition-all cursor-pointer"
+    >
       <div class="flex items-center justify-between">
-
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Contratos Activos</span>
-
-        <i class="pi pi-file-edit text-blue-600 text-xl"></i>
-
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Contratos Vigentes</span>
+        <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white text-blue-600 transition-colors">
+          <i class="pi pi-file-edit text-lg"></i>
+        </div>
       </div>
-
-      <p class="text-3xl font-bold text-slate-800 mt-2">{{ activeContratosCount() }}</p>
-
-      <p class="text-xs text-slate-500 mt-1">{{ inmueblesService.inmuebles().length }} inmuebles en catálogo</p>
-
+      <p class="text-3xl font-extrabold text-slate-800 mt-3">{{ activeContratosCount() }}</p>
+      <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+        <i class="pi pi-home text-blue-600"></i>
+        <span>{{ inmueblesService.inmuebles().length }} inmuebles en portafolio</span>
+      </p>
     </a>
 
     <!-- KPI 3: Recaudo Arrendamientos -->
-
-    <a routerLink="/cobros" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
-
+    <a
+      routerLink="/cobros"
+      class="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-amber-400 hover:-translate-y-0.5 transition-all cursor-pointer"
+    >
       <div class="flex items-center justify-between">
-
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recaudo Cánones</span>
-
-        <i class="pi pi-wallet text-amber-600 text-xl"></i>
-
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Recaudo Cánones</span>
+        <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white text-amber-600 transition-colors">
+          <i class="pi pi-wallet text-lg"></i>
+        </div>
       </div>
-
-      <p class="text-2xl font-bold font-mono text-emerald-700 mt-2">
-
+      <p class="text-2xl font-extrabold font-mono text-emerald-700 mt-3">
         ${{ totalRecaudadoPagos() | number: '1.0-0' }}
-
       </p>
-
-      <p class="text-xs text-slate-500 mt-1">{{ cobrosService.cobros().length }} cuentas de cobro</p>
-
+      <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+        <i class="pi pi-receipt text-amber-600"></i>
+        <span>{{ cobrosService.cobros().length }} cuentas de cobro emitidas</span>
+      </p>
     </a>
 
     <!-- KPI 4: Ventas Comerciales y Stock -->
-
-    <a routerLink="/sales" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-emerald-400 transition-colors cursor-pointer">
-
+    <a
+      routerLink="/sales"
+      class="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-purple-400 hover:-translate-y-0.5 transition-all cursor-pointer"
+    >
       <div class="flex items-center justify-between">
-
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ventas Activas</span>
-
-        <i class="pi pi-shopping-cart text-purple-600 text-xl"></i>
-
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Ventas Comerciales</span>
+        <div class="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white text-purple-600 transition-colors">
+          <i class="pi pi-shopping-cart text-lg"></i>
+        </div>
       </div>
-
-      <p class="text-2xl font-bold font-mono text-slate-800 mt-2">
-
+      <p class="text-2xl font-extrabold font-mono text-slate-800 mt-3">
         ${{ totalSalesRevenue() | number: '1.0-2' }}
-
       </p>
-
-      <p class="text-xs text-amber-600 font-medium mt-1">
-
-        {{ lowStockCount() }} producto(s) con stock bajo
-
+      <p class="text-xs text-amber-600 font-semibold mt-1 flex items-center gap-1">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ lowStockCount() }} producto(s) con alerta de stock</span>
       </p>
-
     </a>
-
   </div>
 
+  <!-- Accesos Rápidos por Módulo -->
+  <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="text-base font-bold text-slate-800">Accesos Rápidos a Módulos del Sistema</h3>
+        <p class="text-xs text-slate-500">Navega directamente a cualquier operación inmobiliaria, comercial o de seguridad</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <a routerLink="/propietarios" class="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex items-center gap-3 cursor-pointer">
+        <i class="pi pi-id-card text-emerald-600 text-lg"></i>
+        <div>
+          <p class="text-xs font-bold text-slate-800">Propietarios</p>
+          <p class="text-[11px] text-slate-500">Titulares</p>
+        </div>
+      </a>
+
+      <a routerLink="/inmuebles" class="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex items-center gap-3 cursor-pointer">
+        <i class="pi pi-home text-teal-600 text-lg"></i>
+        <div>
+          <p class="text-xs font-bold text-slate-800">Inmuebles</p>
+          <p class="text-[11px] text-slate-500">Portafolio</p>
+        </div>
+      </a>
+
+      <a routerLink="/liquidaciones" class="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex items-center gap-3 cursor-pointer">
+        <i class="pi pi-percentage text-blue-600 text-lg"></i>
+        <div>
+          <p class="text-xs font-bold text-slate-800">Liquidaciones</p>
+          <p class="text-[11px] text-slate-500">Dispersión 90/10</p>
+        </div>
+      </a>
+
+      <a routerLink="/mantenimiento" class="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex items-center gap-3 cursor-pointer">
+        <i class="pi pi-wrench text-amber-600 text-lg"></i>
+        <div>
+          <p class="text-xs font-bold text-slate-800">Mantenimiento</p>
+          <p class="text-[11px] text-slate-500">Tickets locativos</p>
+        </div>
+      </a>
+
+      <a routerLink="/rbac" class="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex items-center gap-3 cursor-pointer">
+        <i class="pi pi-lock text-purple-600 text-lg"></i>
+        <div>
+          <p class="text-xs font-bold text-slate-800">Seguridad RBAC</p>
+          <p class="text-[11px] text-slate-500">Roles y Tokens</p>
+        </div>
+      </a>
+    </div>
+  </div>
 </div>

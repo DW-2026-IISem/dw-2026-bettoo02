@@ -7,8 +7,8 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
-import { environment } from '../../../../environments/environment';
-import { ApiResponse, PaginatedResponse } from '../../../core/models/api-response.model';
+import { environment } from '../../../../../environments/environment';
+import { ApiResponse, PaginatedResponse } from '../../../../core/models/api-response.model';
 import { InmueblesService } from '../../inmuebles/services/inmuebles.service';
 
 export interface TicketMantenimiento {
